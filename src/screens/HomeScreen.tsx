@@ -1,32 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RButton } from '../components/RButton';
 import { RCard } from '../components/RCard';
-import { RTabBar } from '../components/RTabBar';
+import { RTabBar, TabKey } from '../components/RTabBar';
 import { RText } from '../components/RText';
 import { SeverityBadge } from '../components/SeverityBadge';
+import { FAMILY } from '../data/family';
 import { useTheme } from '../theme/useTheme';
 
-type FamilyStatus = 'safe' | 'checkIn';
-
-interface FamilyMember {
-  id: string;
-  name: string;
-  location: string;
-  status: FamilyStatus;
-  statusLabel: string;
-  updated: string;
+interface HomeScreenProps {
+  onNavigate: (tab: TabKey) => void;
 }
 
-const FAMILY: FamilyMember[] = [
-  { id: 'mum', name: 'Mum', location: 'Apt 12B · Same building', status: 'safe', statusLabel: 'Safe', updated: '12 min ago' },
-  { id: 'dad', name: 'Dad', location: 'Apt 12B · Same building', status: 'safe', statusLabel: 'Safe', updated: '12 min ago' },
-  { id: 'kai', name: 'Kai (8)', location: 'School · Kew', status: 'checkIn', statusLabel: 'Check in', updated: 'Not replied' },
-  { id: 'husband', name: 'Husband', location: 'Work · Southbank', status: 'safe', statusLabel: 'Safe', updated: '1h ago' },
-];
-
-export function HomeScreen() {
+export function HomeScreen({ onNavigate }: HomeScreenProps) {
   const { colors, severity } = useTheme();
   const safeCount = FAMILY.filter((m) => m.status === 'safe').length;
 
@@ -93,9 +80,11 @@ export function HomeScreen() {
             <RText variant="sectionHeading" color={colors.ink}>
               Family · {safeCount} safe
             </RText>
-            <RText variant="body" color={colors.ink2} accessibilityRole="button">
-              See all
-            </RText>
+            <Pressable onPress={() => onNavigate('Family')} accessibilityRole="button" accessibilityLabel="See all family">
+              <RText variant="body" color={colors.ink2}>
+                See all
+              </RText>
+            </Pressable>
           </View>
 
           <RCard padded={false}>
@@ -114,7 +103,7 @@ export function HomeScreen() {
                 </View>
                 <View style={styles.familyInfo}>
                   <RText variant="bodyEmphasis" color={colors.ink}>
-                    {member.name}
+                    {member.age ? `${member.name} (${member.age})` : member.name}
                   </RText>
                   <RText variant="secondary" color={colors.ink3}>
                     {member.location}
@@ -123,7 +112,7 @@ export function HomeScreen() {
                 <View style={styles.familyStatus}>
                   <SeverityBadge
                     tone={member.status === 'safe' ? 'safe' : 'watch'}
-                    label={member.statusLabel}
+                    label={member.status === 'safe' ? 'Safe' : 'Check in'}
                     icon={member.status === 'safe' ? 'checkmark-circle' : 'warning'}
                     size="s"
                   />
@@ -136,7 +125,7 @@ export function HomeScreen() {
           </RCard>
         </ScrollView>
       </SafeAreaView>
-      <RTabBar active="Home" />
+      <RTabBar active="Home" onSelect={onNavigate} />
     </View>
   );
 }

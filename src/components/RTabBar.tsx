@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/useTheme';
 import { RText } from './RText';
 
-type TabKey = 'Home' | 'Map' | 'Family' | 'Plans' | 'Settings';
+export type TabKey = 'Home' | 'Map' | 'Family' | 'Plans' | 'Settings';
 
 const TABS: { key: TabKey; activeIcon: keyof typeof Ionicons.glyphMap; icon: keyof typeof Ionicons.glyphMap }[] = [
   { key: 'Home', activeIcon: 'home', icon: 'home-outline' },
