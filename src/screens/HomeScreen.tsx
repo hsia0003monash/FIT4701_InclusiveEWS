@@ -136,7 +136,6 @@ export function HomeScreen() {
           </RCard>
         </ScrollView>
       </SafeAreaView>
-      <RTabBar active="Home" />
     </View>
   );
 }
