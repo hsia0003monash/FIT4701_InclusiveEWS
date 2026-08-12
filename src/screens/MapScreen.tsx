@@ -1,15 +1,86 @@
 import { Ionicons } from '@expo/vector-icons';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RText } from '../components/RText';
 import { useTheme } from '../theme/useTheme';
-import MapView from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
+
+import { useEffect, useState } from 'react';
 
 import { useWindowDimensions } from 'react-native';
+import * as Location from 'expo-location';
 
 export function MapScreen() {
   const { colors, severity } = useTheme();
   const { height } = useWindowDimensions();
+
+  const [region, setRegion] = useState<{
+    latitude: number;
+    longitude: number;
+    latitudeDelta: number;
+    longitudeDelta: number;
+  } | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>("error");
+
+  useEffect(() => {
+  let subscription: Location.LocationSubscription;
+
+  (async () => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') return;
+
+    subscription = await Location.watchPositionAsync(
+      { accuracy: Location.Accuracy.Balanced, timeInterval: 5000, distanceInterval: 10 },
+      (location) => {
+        setRegion((prev) => ({
+          ...location.coords,
+          latitudeDelta: prev?.latitudeDelta ?? 0.05,
+          longitudeDelta: prev?.longitudeDelta ?? 0.05,
+        }));
+      }
+    );
+  })();
+
+  return () => subscription?.remove();
+}, []);
+
+    if (!region) {
+    return (
+        <View style={[styles.screen, { backgroundColor: colors.bg }]}>
+      <SafeAreaView edges={['top']} style={styles.flex}>
+        <ScrollView contentContainerStyle={styles.content}>
+          <View style={styles.headerRow}>
+            <View style={styles.headerText}>
+              <RText variant="eyebrowLabel" color={colors.ink3}>
+                MAP
+              </RText>
+              <View style={styles.locationRow}>
+                <Ionicons name="location" size={16} color={colors.ink} />
+                <RText variant="bodyEmphasis" color={colors.ink}>
+                  Melbourne CBD · Home
+                </RText>
+              </View>
+            </View>
+            <View
+              style={[styles.avatar, { backgroundColor: colors.ink, borderColor: colors.hairline }]}
+              accessibilityRole="button"
+              accessibilityLabel="Your profile"
+            >
+              <RText variant="secondary" color={colors.bg}>
+                SL
+              </RText>
+            </View>
+          </View>
+          <View style={[styles.mapContainer, { height: height * 0.75 }] }>
+            <View style={styles.center}>
+                <MapView style={styles.map} />
+            </View>
+        </View>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
+    );
+    }
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>
@@ -38,7 +109,9 @@ export function MapScreen() {
             </View>
           </View>
           <View style={styles.mapContainer, { height: height * 0.75 }}>
-            <MapView style={styles.map} />
+            <MapView style={styles.map}
+                    region={region}
+                    showsUserLocation />
         </View>
         </ScrollView>
       </SafeAreaView>
