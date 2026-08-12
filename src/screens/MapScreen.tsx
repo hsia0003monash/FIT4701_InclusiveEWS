@@ -1,11 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
-import { ScrollView, StyleSheet, View, ActivityIndicator } from 'react-native';
+import { ScrollView, StyleSheet, View, ActivityIndicator, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RText } from '../components/RText';
 import { useTheme } from '../theme/useTheme';
 import MapView, { Marker } from 'react-native-maps';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 import { useWindowDimensions } from 'react-native';
 import * as Location from 'expo-location';
@@ -13,6 +13,9 @@ import * as Location from 'expo-location';
 export function MapScreen() {
   const { colors, severity } = useTheme();
   const { height } = useWindowDimensions();
+  const [placeLabel, setPlaceLabel] = useState<string | null>(null);
+  
+  const mapRef = useRef<MapView>(null);
 
   const [region, setRegion] = useState<{
     latitude: number;
@@ -21,10 +24,11 @@ export function MapScreen() {
     longitudeDelta: number;
   } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>("error");
-
+  const [currentRegion, setCurrentRegion] = useState(region)
+  //get user location
   useEffect(() => {
   let subscription: Location.LocationSubscription;
-
+    
   (async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') return;
@@ -41,8 +45,35 @@ export function MapScreen() {
     );
   })();
 
+  
+
+  
+
   return () => subscription?.remove();
 }, []);
+
+//find user region
+  useEffect(() => {
+    if (!region) return;
+
+    (async () => {
+        try {
+        const results = await Location.reverseGeocodeAsync({
+            latitude: region.latitude,
+            longitude: region.longitude,
+        });
+        const place = results[0];
+        if (place) {
+            const label = [place.district ?? place.subregion, place.city]
+            .filter(Boolean)
+            .join(', ');
+            setPlaceLabel(label || place.city || null);
+        }
+        } catch (err) {
+        console.error('Reverse geocode failed:', err);
+        }
+    })();
+    }, [region?.latitude, region?.longitude]);
 
     if (!region) {
     return (
@@ -57,7 +88,7 @@ export function MapScreen() {
               <View style={styles.locationRow}>
                 <Ionicons name="location" size={16} color={colors.ink} />
                 <RText variant="bodyEmphasis" color={colors.ink}>
-                  Melbourne CBD · Home
+                  <ActivityIndicator />
                 </RText>
               </View>
             </View>
@@ -72,9 +103,7 @@ export function MapScreen() {
             </View>
           </View>
           <View style={[styles.mapContainer, { height: height * 0.75 }] }>
-            <View style={styles.center}>
-                <MapView style={styles.map} />
-            </View>
+            <MapView style={styles.map} />
         </View>
         </ScrollView>
       </SafeAreaView>
@@ -94,7 +123,7 @@ export function MapScreen() {
               <View style={styles.locationRow}>
                 <Ionicons name="location" size={16} color={colors.ink} />
                 <RText variant="bodyEmphasis" color={colors.ink}>
-                  Melbourne CBD · Home
+                  {placeLabel ?? 'Locating…'}
                 </RText>
               </View>
             </View>
@@ -111,7 +140,23 @@ export function MapScreen() {
           <View style={styles.mapContainer, { height: height * 0.75 }}>
             <MapView style={styles.map}
                     region={region}
+                    ref={mapRef}
+                    onRegionChangeComplete={setCurrentRegion}
+                    showsMyLocationButton={false}
                     showsUserLocation />
+                    <Pressable
+                    style={styles.locationButton}
+                    onPress={() => {
+                    mapRef.current?.animateToRegion({
+                        latitude: region.latitude,
+                        longitude: region.longitude,
+                        latitudeDelta: currentRegion.latitudeDelta,
+                        longitudeDelta: currentRegion.longitudeDelta,
+                    });
+                    }}
+                >
+    <Ionicons name="locate" size={28} color={colors.ink} />
+  </Pressable>
         </View>
         </ScrollView>
       </SafeAreaView>
@@ -209,4 +254,19 @@ const styles = StyleSheet.create({
   map: {
   flex: 1,
   },
+  locationButton: {
+  position: 'absolute',
+  bottom: 20,
+  right: 20,
+  width: 70,        // now you control the size
+  height: 70,
+  borderRadius: 24,
+  backgroundColor: 'white',
+  alignItems: 'center',
+  justifyContent: 'center',
+  elevation: 4,       // Android shadow
+  shadowColor: '#000', // iOS shadow
+  shadowOpacity: 0.2,
+  shadowRadius: 4,
+},
 });
