@@ -10,6 +10,10 @@ import { useEffect, useState, useRef } from 'react';
 import { useWindowDimensions } from 'react-native';
 import * as Location from 'expo-location';
 
+const BUTTON_SIZE = 70;
+const BUTTON_GAP = 20;
+const BASE_BOTTOM = 25;
+
 export function MapScreen() {
   const { colors, severity } = useTheme();
   const { height } = useWindowDimensions();
@@ -145,18 +149,46 @@ export function MapScreen() {
                     showsMyLocationButton={false}
                     showsUserLocation />
                     <Pressable
-                    style={styles.locationButton}
-                    onPress={() => {
-                    mapRef.current?.animateToRegion({
-                        latitude: region.latitude,
-                        longitude: region.longitude,
-                        latitudeDelta: currentRegion.latitudeDelta,
-                        longitudeDelta: currentRegion.longitudeDelta,
-                    });
+                        style={styles.locationButton}
+                        onPress={() => {
+                        mapRef.current?.animateToRegion({
+                            latitude: region.latitude,
+                            longitude: region.longitude,
+                            latitudeDelta: currentRegion.latitudeDelta,
+                            longitudeDelta: currentRegion.longitudeDelta,
+                        });
+                        }}
+                        >
+                        <Ionicons name="locate" size={28} color={colors.ink} />
+                    </Pressable>
+                    <View style={styles.zoomControls}>
+                    <Pressable
+                        style={styles.zoomButton}
+                        onPress={() => {
+                        mapRef.current?.animateToRegion({
+                            latitude: currentRegion.latitude,
+                            longitude: currentRegion.longitude,
+                            latitudeDelta: currentRegion.latitudeDelta/1.5,
+                            longitudeDelta: currentRegion.longitudeDelta/1.5,
+                        });
                     }}
                 >
-    <Ionicons name="locate" size={28} color={colors.ink} />
-  </Pressable>
+                <Ionicons name="add" size={28} color={colors.ink} />
+            </Pressable>
+            <Pressable
+                        style={styles.zoomButton}
+                        onPress={() => {
+                        mapRef.current?.animateToRegion({
+                            latitude: currentRegion.latitude,
+                            longitude: currentRegion.longitude,
+                            latitudeDelta: currentRegion.latitudeDelta*1.5,
+                            longitudeDelta: currentRegion.longitudeDelta*1.5,
+                        });
+                    }}
+                >
+                <Ionicons name="remove" size={28} color={colors.ink} />
+            </Pressable>
+            </View>
         </View>
         </ScrollView>
       </SafeAreaView>
@@ -256,16 +288,34 @@ const styles = StyleSheet.create({
   },
   locationButton: {
   position: 'absolute',
-  bottom: 20,
+  bottom: BASE_BOTTOM,
   right: 20,
-  width: 70,        // now you control the size
-  height: 70,
+  width: BUTTON_SIZE,        
+  height: BUTTON_SIZE,
   borderRadius: 24,
   backgroundColor: 'white',
   alignItems: 'center',
   justifyContent: 'center',
   elevation: 4,       // Android shadow
   shadowColor: '#000', // iOS shadow
+  shadowOpacity: 0.2,
+  shadowRadius: 4,
+},
+zoomControls: {
+  position: 'absolute',
+  bottom: BASE_BOTTOM + BUTTON_SIZE + BUTTON_GAP, // stacks directly above locationButton
+  right: 20,          // same horizontal position — stacked, not side-by-side
+  gap: BUTTON_GAP,
+},
+zoomButton: {
+  width: BUTTON_SIZE,
+  height: BUTTON_SIZE,
+  borderRadius: 24,
+  backgroundColor: 'white',
+  alignItems: 'center',
+  justifyContent: 'center',
+  elevation: 4,
+  shadowColor: '#000',
   shadowOpacity: 0.2,
   shadowRadius: 4,
 },
