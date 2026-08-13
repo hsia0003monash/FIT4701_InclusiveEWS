@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RButton } from '../components/RButton';
@@ -15,6 +16,7 @@ interface FamilyScreenProps {
 
 export function FamilyScreen({ onNavigate }: FamilyScreenProps) {
   const { colors, severity } = useTheme();
+  const [selectedId, setSelectedId] = useState<string | null>('kai');
 
   const safeCount = FAMILY.filter((m) => m.status === 'safe').length + 1; // +1 for the user
   const waitingCount = FAMILY.filter((m) => m.status === 'checkIn').length;
@@ -89,54 +91,63 @@ export function FamilyScreen({ onNavigate }: FamilyScreenProps) {
 
           {FAMILY.map((member) => {
             const isWaiting = member.status === 'checkIn';
+            const isSelected = member.id === selectedId;
 
             return (
-              <RCard
+              <Pressable
                 key={member.id}
-                style={
-                  isWaiting
-                    ? { borderColor: severity.watch.border, borderWidth: 1.5 }
-                    : undefined
-                }
+                onPress={() => setSelectedId((prev) => (prev === member.id ? null : member.id))}
+                accessibilityRole="button"
+                accessibilityLabel={`${member.name}, ${isWaiting ? 'waiting' : 'safe'}`}
+                accessibilityState={{ expanded: isSelected }}
+                accessibilityHint={isSelected ? 'Collapses quick actions' : 'Expands quick actions'}
               >
-                <View style={styles.memberRow}>
-                  <View style={[styles.avatar, { backgroundColor: colors.surface2 }]}>
-                    <RText variant="bodyEmphasis" color={colors.ink2}>
-                      {member.name.charAt(0)}
-                    </RText>
-                  </View>
-                  <View style={styles.memberInfo}>
-                    <RText variant="bodyEmphasis" color={colors.ink}>
-                      {member.age ? `${member.name} · ${member.age}` : member.name}
-                    </RText>
-                    <View style={styles.locationRow}>
-                      <Ionicons name="location-outline" size={13} color={colors.ink3} />
-                      <RText variant="secondary" color={colors.ink3}>
-                        {member.location}
+                <RCard
+                  style={
+                    isSelected
+                      ? { borderColor: severity.watch.border, borderWidth: 1.5 }
+                      : undefined
+                  }
+                >
+                  <View style={styles.memberRow}>
+                    <View style={[styles.avatar, { backgroundColor: colors.surface2 }]}>
+                      <RText variant="bodyEmphasis" color={colors.ink2}>
+                        {member.name.charAt(0)}
                       </RText>
                     </View>
+                    <View style={styles.memberInfo}>
+                      <RText variant="bodyEmphasis" color={colors.ink}>
+                        {member.age ? `${member.name} · ${member.age}` : member.name}
+                      </RText>
+                      <View style={styles.locationRow}>
+                        <Ionicons name="location-outline" size={13} color={colors.ink3} />
+                        <RText variant="secondary" color={colors.ink3}>
+                          {member.location}
+                        </RText>
+                      </View>
+                    </View>
+                    <SeverityBadge
+                      tone={isWaiting ? 'watch' : 'safe'}
+                      label={isWaiting ? 'Waiting' : 'Safe'}
+                      icon={isWaiting ? 'warning' : 'checkmark-circle'}
+                    />
                   </View>
-                  <SeverityBadge
-                    tone={isWaiting ? 'watch' : 'safe'}
-                    label={isWaiting ? 'Waiting' : 'Safe'}
-                    icon={isWaiting ? 'warning' : 'checkmark-circle'}
-                  />
-                </View>
 
-                <View style={[styles.messageBubble, { backgroundColor: colors.surface2 }]}>
-                  <RText variant="body" color={colors.ink2}>
-                    {member.message}
-                  </RText>
-                </View>
-
-                {isWaiting && (
-                  <View style={styles.actionsRow}>
-                    <RButton label="Call" variant="danger" size="s" icon="call" iconPosition="leading" style={styles.actionButton} />
-                    <RButton label="Nudge" variant="secondary" size="s" style={styles.actionButton} />
-                    <RButton label="I know they're safe" variant="secondary" size="s" style={styles.actionButton} />
+                  <View style={[styles.messageBubble, { backgroundColor: colors.surface2 }]}>
+                    <RText variant="body" color={colors.ink2}>
+                      {member.message}
+                    </RText>
                   </View>
-                )}
-              </RCard>
+
+                  {isSelected && (
+                    <View style={styles.actionsRow}>
+                      <RButton label="Call" variant="danger" size="s" icon="call" iconPosition="leading" style={styles.actionButton} />
+                      <RButton label="Nudge" variant="secondary" size="s" style={styles.actionButton} />
+                      <RButton label="I know they're safe" variant="secondary" size="s" style={styles.actionButton} />
+                    </View>
+                  )}
+                </RCard>
+              </Pressable>
             );
           })}
         </ScrollView>
