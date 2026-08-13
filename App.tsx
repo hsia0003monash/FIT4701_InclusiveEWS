@@ -12,17 +12,37 @@ import { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { TabKey } from './src/components/RTabBar';
+import { SettingsProvider, useSettings } from './src/context/SettingsContext';
 import { FamilyScreen } from './src/screens/FamilyScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
+import { SettingsScreen } from './src/screens/SettingsScreen';
 
 SplashScreen.preventAutoHideAsync();
 
-// Only Home and Family have real screens so far; the other tabs are visual placeholders.
-const ROUTABLE_TABS: TabKey[] = ['Home', 'Family'];
+// Only Home, Family, and Settings have real screens so far; Map/Plans are visual placeholders.
+const ROUTABLE_TABS: TabKey[] = ['Home', 'Family', 'Settings'];
+
+function AppContent({ onLayout }: { onLayout: () => void }) {
+  const [activeTab, setActiveTab] = useState<TabKey>('Home');
+  const { darkMode } = useSettings();
+
+  const handleNavigate = useCallback((tab: TabKey) => {
+    if (ROUTABLE_TABS.includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, []);
+
+  return (
+    <View style={{ flex: 1 }} onLayout={onLayout}>
+      {activeTab === 'Family' && <FamilyScreen onNavigate={handleNavigate} />}
+      {activeTab === 'Settings' && <SettingsScreen onNavigate={handleNavigate} />}
+      {activeTab === 'Home' && <HomeScreen onNavigate={handleNavigate} />}
+      <StatusBar style={darkMode ? 'light' : 'dark'} />
+    </View>
+  );
+}
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<TabKey>('Home');
-
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -37,26 +57,15 @@ export default function App() {
     }
   }, [fontsLoaded]);
 
-  const handleNavigate = useCallback((tab: TabKey) => {
-    if (ROUTABLE_TABS.includes(tab)) {
-      setActiveTab(tab);
-    }
-  }, []);
-
   if (!fontsLoaded) {
     return null;
   }
 
   return (
     <SafeAreaProvider>
-      <View style={{ flex: 1 }} onLayout={onLayout}>
-        {activeTab === 'Family' ? (
-          <FamilyScreen onNavigate={handleNavigate} />
-        ) : (
-          <HomeScreen onNavigate={handleNavigate} />
-        )}
-        <StatusBar style="auto" />
-      </View>
+      <SettingsProvider>
+        <AppContent onLayout={onLayout} />
+      </SettingsProvider>
     </SafeAreaProvider>
   );
 }
