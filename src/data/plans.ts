@@ -29,11 +29,25 @@ export function getPlanStats(plan: Plan) {
   return { total, done, percent };
 }
 
-/** Progress-bar colour tone based on how far along a plan is, independent of its status label. */
-export function getProgressTone(percent: number): 'emergency' | 'watch' | 'safe' {
-  if (percent >= 90) return 'safe';
-  if (percent >= 33) return 'watch';
-  return 'emergency';
+// Bold, saturated colours dedicated to the progress-bar fill. The severity palette's
+// `fg` tones are tuned for text contrast and read as near-identical dark shades at this
+// size, so the fill itself needs its own vivid set instead of reusing them.
+const PROGRESS_FILL = {
+  notStarted: '#DC2626',
+  inProgress: '#D97706',
+  nearComplete: '#16A34A',
+};
+
+/** Progress-bar fill colour based on how far along a plan is, independent of its status label. */
+export function getProgressFillColor(percent: number): string {
+  if (percent >= 90) return PROGRESS_FILL.nearComplete;
+  if (percent >= 33) return PROGRESS_FILL.inProgress;
+  return PROGRESS_FILL.notStarted;
+}
+
+/** Minimum visible fill width so a 0% plan still shows its colour instead of an empty bar. */
+export function getProgressFillWidth(percent: number): number {
+  return Math.max(percent, 6);
 }
 
 export const PLANS: Plan[] = [

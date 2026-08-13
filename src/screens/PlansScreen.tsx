@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { PlanDetailModal } from '../components/PlanDetailModal';
 import { RCard } from '../components/RCard';
 import { RTabBar, TabKey } from '../components/RTabBar';
 import { RText } from '../components/RText';
-import { ChecklistItem, Plan, PLANS, PlanStatus } from '../data/plans';
+import { getPlanStats, getProgressFillColor, getProgressFillWidth, Plan, PLANS, PlanStatus } from '../data/plans';
 import { useTheme } from '../theme/useTheme';
 
 interface PlansScreenProps {
@@ -17,74 +19,43 @@ const STATUS_LABEL: Record<PlanStatus, string> = {
   start: 'START',
 };
 
-function PlanTile({ plan }: { plan: Plan }) {
+function PlanTile({ plan, onPress }: { plan: Plan; onPress: () => void }) {
   const { colors, severity } = useTheme();
-  const total = plan.checklist.length;
-  const done = plan.checklist.filter((i) => i.done).length;
-  const percent = Math.round((done / total) * 100);
+  const { total, done, percent } = getPlanStats(plan);
 
   const statusColor =
     plan.status === 'ready' ? severity.safe.fg : plan.status === 'ongoing' ? severity.watch.fg : colors.ink2;
-  const fillColor =
-    plan.status === 'ready' ? severity.safe.fg : plan.status === 'ongoing' ? severity.watch.fg : colors.ink3;
+  const fillColor = getProgressFillColor(percent);
 
   return (
-    <RCard style={styles.tile}>
-      <RText variant="bodyEmphasis" color={colors.ink}>
-        {plan.name}
-      </RText>
-      <RText variant="caption" color={colors.ink3}>
-        Reviewed {plan.reviewed}
-      </RText>
-      <View style={[styles.progressTrack, { backgroundColor: colors.surface2 }]}>
-        <View style={[styles.progressFill, { backgroundColor: fillColor, width: `${percent}%` }]} />
-      </View>
-      <View style={styles.tileFooterRow}>
-        <RText variant="caption" color={colors.ink} style={styles.tileRatio}>
-          {done}/{total} · {percent}%
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${plan.name} plan, ${done} of ${total} complete`} style={styles.tileWrap}>
+      <RCard style={styles.tile}>
+        <RText variant="bodyEmphasis" color={colors.ink}>
+          {plan.name}
         </RText>
-        <RText variant="micro" color={statusColor}>
-          {STATUS_LABEL[plan.status]}
+        <RText variant="caption" color={colors.ink3}>
+          Reviewed {plan.reviewed}
         </RText>
-      </View>
-    </RCard>
-  );
-}
-
-function ChecklistRow({ item, colors, isLast }: { item: ChecklistItem; colors: ReturnType<typeof useTheme>['colors']; isLast: boolean }) {
-  return (
-    <View style={[styles.checklistRow, !isLast && { borderBottomWidth: 1, borderBottomColor: colors.hairline }]}>
-      <View
-        style={[
-          styles.checkbox,
-          item.done
-            ? { backgroundColor: colors.ink, borderColor: colors.ink }
-            : { backgroundColor: 'transparent', borderColor: colors.hairline },
-        ]}
-      >
-        {item.done && <Ionicons name="checkmark" size={14} color={colors.bg} />}
-      </View>
-      <View style={styles.checklistText}>
-        <RText
-          variant="bodyEmphasis"
-          color={item.done ? colors.ink3 : colors.ink}
-          style={item.done ? styles.strikethrough : undefined}
-        >
-          {item.label}
-        </RText>
-        {item.detail && (
-          <RText variant="secondary" color={colors.ink3}>
-            {item.detail}
+        <View style={[styles.progressTrack, { backgroundColor: colors.surface2 }]}>
+          <View style={[styles.progressFill, { backgroundColor: fillColor, width: `${getProgressFillWidth(percent)}%` }]} />
+        </View>
+        <View style={styles.tileFooterRow}>
+          <RText variant="caption" color={colors.ink} style={styles.tileRatio}>
+            {done}/{total} · {percent}%
           </RText>
-        )}
-      </View>
-      {item.expandable && <Ionicons name="chevron-forward" size={18} color={colors.ink3} />}
-    </View>
+          <RText variant="micro" color={statusColor}>
+            {STATUS_LABEL[plan.status]}
+          </RText>
+        </View>
+      </RCard>
+    </Pressable>
   );
 }
 
 export function PlansScreen({ onNavigate }: PlansScreenProps) {
   const { colors } = useTheme();
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const selectedPlan = PLANS.find((p) => p.id === selectedPlanId) ?? null;
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>
@@ -110,40 +81,13 @@ export function PlansScreen({ onNavigate }: PlansScreenProps) {
 
           <View style={styles.tileGrid}>
             {PLANS.map((plan) => (
-              <PlanTile key={plan.id} plan={plan} />
+              <PlanTile key={plan.id} plan={plan} onPress={() => setSelectedPlanId(plan.id)} />
             ))}
           </View>
-
-          {PLANS.map((plan) => {
-            const total = plan.checklist.length;
-            const done = plan.checklist.filter((i) => i.done).length;
-
-            return (
-              <View key={plan.id} style={styles.planSection}>
-                <View style={styles.sectionHeaderRow}>
-                  <RText variant="sectionHeading" color={colors.ink}>
-                    {plan.name} plan
-                  </RText>
-                  <RText variant="body" color={colors.ink2}>
-                    {done} of {total}
-                  </RText>
-                </View>
-                <RCard padded={false}>
-                  {plan.checklist.map((item, index) => (
-                    <ChecklistRow
-                      key={item.label}
-                      item={item}
-                      colors={colors}
-                      isLast={index === plan.checklist.length - 1}
-                    />
-                  ))}
-                </RCard>
-              </View>
-            );
-          })}
         </ScrollView>
       </SafeAreaView>
       <RTabBar active="Plans" onSelect={onNavigate} />
+      <PlanDetailModal plan={selectedPlan} onClose={() => setSelectedPlanId(null)} />
     </View>
   );
 }
@@ -177,9 +121,11 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 12,
   },
-  tile: {
+  tileWrap: {
     flexBasis: '47%',
     flexGrow: 1,
+  },
+  tile: {
     gap: 8,
   },
   progressTrack: {
@@ -198,36 +144,5 @@ const styles = StyleSheet.create({
   },
   tileRatio: {
     fontWeight: '700',
-  },
-  planSection: {
-    gap: 12,
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  checklistRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-  },
-  checklistText: {
-    flex: 1,
-    gap: 2,
-  },
-  strikethrough: {
-    textDecorationLine: 'line-through',
   },
 });
