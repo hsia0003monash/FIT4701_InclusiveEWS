@@ -47,7 +47,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
           <RCard
             style={[styles.alertCard, { borderLeftColor: severity.advice.border, borderLeftWidth: 6 }]}
             accessibilityRole="alert"
-            accessibilityLabel="Advice alert. Thunderstorm moving in from the west. Updated 2 minutes ago."
+            accessibilityLabel="Advice alert. Flash flooding expected along the Yarra River. Updated 2 minutes ago."
           >
             <View style={styles.alertHeaderRow}>
               <SeverityBadge tone="advice" label="ADVICE" icon="information-circle" pill={false} />
@@ -60,7 +60,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
             </View>
 
             <RText variant="heroHeadline" color={colors.ink} style={styles.alertHeadline} accessibilityRole="header">
-              Thunderstorm moving in from the west.
+              Flash flooding expected along the Yarra River.
             </RText>
 
             <View style={styles.alertActions}>
