@@ -7,12 +7,33 @@ export interface ChecklistItem {
   expandable?: boolean;
 }
 
+export interface ParticipantProgress {
+  name: string;
+  stepsDone: number;
+}
+
 export interface Plan {
   id: string;
   name: string;
   reviewed: string;
   status: PlanStatus;
+  createdBy: string;
+  participants: ParticipantProgress[];
   checklist: ChecklistItem[];
+}
+
+export function getPlanStats(plan: Plan) {
+  const total = plan.checklist.length;
+  const done = plan.checklist.filter((item) => item.done).length;
+  const percent = Math.round((done / total) * 100);
+  return { total, done, percent };
+}
+
+/** Progress-bar colour tone based on how far along a plan is, independent of its status label. */
+export function getProgressTone(percent: number): 'emergency' | 'watch' | 'safe' {
+  if (percent >= 90) return 'safe';
+  if (percent >= 33) return 'watch';
+  return 'emergency';
 }
 
 export const PLANS: Plan[] = [
@@ -21,6 +42,13 @@ export const PLANS: Plan[] = [
     name: 'Apartment fire',
     reviewed: '3 weeks ago',
     status: 'ready',
+    createdBy: 'You',
+    participants: [
+      { name: 'Mum', stepsDone: 7 },
+      { name: 'Dad', stepsDone: 7 },
+      { name: 'Kai', stepsDone: 6 },
+      { name: 'Husband', stepsDone: 7 },
+    ],
     checklist: [
       { label: 'Fire extinguisher checked and charged', done: true },
       { label: 'Escape route map posted near door', done: true },
@@ -36,6 +64,13 @@ export const PLANS: Plan[] = [
     name: 'Flash flood',
     reviewed: '2 months ago',
     status: 'ongoing',
+    createdBy: 'You',
+    participants: [
+      { name: 'Mum', stepsDone: 5 },
+      { name: 'Dad', stepsDone: 4 },
+      { name: 'Kai', stepsDone: 2 },
+      { name: 'Husband', stepsDone: 6 },
+    ],
     checklist: [
       { label: '3-day supply of water for 5 people', detail: '15 L total · current: 9 L', done: false, expandable: true },
       { label: 'Medication list with dosages', detail: 'Mum, Dad, Kai', done: true },
@@ -51,6 +86,13 @@ export const PLANS: Plan[] = [
     name: 'Typhoon',
     reviewed: 'Never',
     status: 'ongoing',
+    createdBy: 'You',
+    participants: [
+      { name: 'Mum', stepsDone: 2 },
+      { name: 'Dad', stepsDone: 1 },
+      { name: 'Kai', stepsDone: 0 },
+      { name: 'Husband', stepsDone: 3 },
+    ],
     checklist: [
       { label: 'Shutters and window protection installed', done: true },
       { label: 'Emergency kit restocked', detail: 'Batteries, torches', done: true },
@@ -65,6 +107,13 @@ export const PLANS: Plan[] = [
     name: 'Bushfire',
     reviewed: 'Never',
     status: 'start',
+    createdBy: 'You',
+    participants: [
+      { name: 'Mum', stepsDone: 0 },
+      { name: 'Dad', stepsDone: 0 },
+      { name: 'Kai', stepsDone: 0 },
+      { name: 'Husband', stepsDone: 1 },
+    ],
     checklist: [
       { label: 'Defendable space cleared around property', done: false },
       { label: 'Bushfire survival plan written', done: false },
