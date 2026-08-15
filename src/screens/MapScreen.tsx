@@ -18,17 +18,20 @@ import { useTheme } from '../theme/useTheme';
 // ---------------------------------------------------------------------------
 // Hazard data model
 // ---------------------------------------------------------------------------
-
 type HazardType =
   | 'Fire'
   | 'Chemical'
   | 'Thunderstorm'
-  | 'Hailstorm'
   | 'Storm'
   | 'Cyclone'
-  | 'Tornado'
   | 'Extreme winds'
   | 'Earthquake'
+  | 'Flooding'
+  | 'Tsunami'
+  | 'Landslide'
+  | 'Heatwave'
+  | 'Gas leak'
+  | 'Air quality'
   | 'Misc';
 
 type HazardStatus = 'active' | 'inactive';
@@ -51,52 +54,66 @@ interface HazardColour {
   a: number;
 }
 
-const HAZARD_STYLES: Record<
-  HazardType,
+const HAZARD_STYLES: Record<HazardType,
   { icon: keyof typeof MaterialCommunityIcons.glyphMap; theme: HazardColour }
 > = {
   Fire: {
     icon: 'fire',
-    theme: { id: 'Fire', r: 234, g: 88, b: 12, a: 1 }, // burnt orange
+    theme: { id: 'Fire', r: 234, g: 88, b: 12, a: 1 },
   },
   Chemical: {
     icon: 'flask-outline',
-    theme: { id: 'Chemical', r: 132, g: 204, b: 22, a: 1 }, // toxic green
+    theme: { id: 'Chemical', r: 132, g: 204, b: 22, a: 1 },
   },
   Thunderstorm: {
     icon: 'weather-lightning',
-    theme: { id: 'Thunderstorm', r: 99, g: 102, b: 241, a: 1 }, // indigo-violet
-  },
-  Hailstorm: {
-    icon: 'weather-hail',
-    theme: { id: 'Hailstorm', r: 56, g: 189, b: 248, a: 1 }, // icy blue
+    theme: { id: 'Thunderstorm', r: 99, g: 102, b: 241, a: 1 },
   },
   Storm: {
     icon: 'weather-pouring',
-    theme: { id: 'Storm', r: 71, g: 85, b: 105, a: 1 }, // slate grey-blue
+    theme: { id: 'Storm', r: 71, g: 85, b: 105, a: 1 },
   },
   Cyclone: {
     icon: 'weather-hurricane',
-    theme: { id: 'Cyclone', r: 168, g: 85, b: 247, a: 1 }, // deep purple
-  },
-  Tornado: {
-    icon: 'weather-tornado',
-    theme: { id: 'Tornado', r: 100, g: 116, b: 139, a: 1 }, // dark slate
+    theme: { id: 'Cyclone', r: 168, g: 85, b: 247, a: 1 },
   },
   'Extreme winds': {
     icon: 'weather-windy',
-    theme: { id: 'Extreme winds', r: 20, g: 184, b: 166, a: 1 }, // teal
+    theme: { id: 'Extreme winds', r: 20, g: 184, b: 166, a: 1 },
   },
   Earthquake: {
     icon: 'waveform',
-    theme: { id: 'Earthquake', r: 146, g: 64, b: 14, a: 1 }, // earthy brown
+    theme: { id: 'Earthquake', r: 146, g: 64, b: 14, a: 1 },
+  },
+  Flooding: {
+    icon: 'home-flood',
+    theme: { id: 'Flooding', r: 37, g: 99, b: 235, a: 1 },
+  },
+  Tsunami: {
+    icon: 'waves', 
+    theme: { id: 'Tsunami', r: 8, g: 47, b: 73, a: 1 }, // deep navy — darker/more severe than Flooding's blue
+  },
+  Landslide: {
+    icon: 'terrain', // MCI has 'terrain' (mountain/hill contour icon) — reads as ground/slope
+    theme: { id: 'Landslide', r: 120, g: 53, b: 15, a: 1 }, // dark earthy brown, distinct from Earthquake's lighter brown
+  },
+  Heatwave: {
+    icon: 'thermometer-high',
+    theme: { id: 'Heatwave', r: 220, g: 38, b: 38, a: 1 }, // strong red — heat/danger association
+  },
+  'Gas leak': {
+    icon: 'gas-cylinder',
+    theme: { id: 'Gas leak', r: 202, g: 138, b: 4, a: 1 }, // amber/warning yellow-orange, distinct from Fire's orange and Chemical's green
+  },
+  'Air quality': {
+    icon: 'weather-hazy',
+    theme: { id: 'Air quality', r: 156, g: 163, b: 175, a: 1 }, // smoky grey
   },
   Misc: {
     icon: 'alert-circle-outline',
-    theme: { id: 'Misc', r: 107, g: 114, b: 128, a: 1 }, // neutral grey
+    theme: { id: 'Misc', r: 107, g: 114, b: 128, a: 1 },
   },
 };
-
 const toRgba = (c: HazardColour, alpha?: number) =>
   `rgba(${c.r}, ${c.g}, ${c.b}, ${alpha ?? c.a})`;
 
@@ -133,16 +150,6 @@ const HAZARDS: Hazard[] = [
       'Severe thunderstorm warning for the Yarra Valley, with damaging winds and heavy rainfall expected to continue through the evening.',
   },
   {
-    id: 'haz-004',
-    type: 'Hailstorm',
-    status: 'active',
-    effectRadius: 9000,
-    lat: -37.5622,
-    long: 143.8503,
-    description:
-      'Hailstorm moving through Ballarat, with hailstones up to 2cm reported. Motorists advised to seek shelter and avoid driving.',
-  },
-  {
     id: 'haz-005',
     type: 'Storm',
     status: 'active',
@@ -161,16 +168,6 @@ const HAZARDS: Hazard[] = [
     long: 147.6167,
     description:
       'Ex-tropical cyclone system tracking toward Gippsland, expected to bring destructive winds and heavy rainfall over the next 24 hours.',
-  },
-  {
-    id: 'haz-007',
-    type: 'Tornado',
-    status: 'active',
-    effectRadius: 5000,
-    lat: -36.1219,
-    long: 146.8887,
-    description:
-      'Tornado warning issued for areas near Wodonga following confirmed funnel cloud sightings. Seek shelter immediately.',
   },
   {
     id: 'haz-008',
@@ -202,8 +199,6 @@ const HAZARDS: Hazard[] = [
     description:
       'Major road closures and localised flooding reported near Geelong following heavy overnight rainfall.',
   },
-
-  // --- Inactive: 3 additional ---
   {
     id: 'haz-011',
     type: 'Fire',
@@ -223,15 +218,23 @@ const HAZARDS: Hazard[] = [
     description: 'Storm system that passed through Warrnambool overnight has cleared. Coastal flood warnings have been lifted.',
   },
   {
-    id: 'haz-013',
-    type: 'Hailstorm',
-    status: 'inactive',
-    effectRadius: 8500,
-    lat: -36.7581,
-    long: 141.618,
-    description:
-      'Hailstorm that affected Horsham earlier today has passed. Minor crop and property damage reported in surrounding areas.',
-  },
+  id: 'haz-017',
+  type: 'Flooding',
+  status: 'active',
+  effectRadius: 7000,
+  lat: -38.1600, // Barwon River area near Geelong — flood-prone
+  long: 144.3700,
+  description: 'Major flooding along the Barwon River following sustained heavy rainfall. Residents in low-lying areas urged to move to higher ground.',
+},
+{
+  id: 'haz-018',
+  type: 'Flooding',
+  status: 'inactive',
+  effectRadius: 9000,
+  lat: -36.3667, // Shepparton/Goulburn River area — flood-prone
+  long: 145.4000,
+  description: 'Flooding along the Goulburn River near Shepparton has receded. Some roads remain closed for cleanup.',
+},
 
   // --- Overlapping-radius examples ---
   {
@@ -263,6 +266,78 @@ const HAZARDS: Hazard[] = [
     long: 145.38,
     description: 'Fast-moving grassfire near Lilydale, spreading toward nearby residential areas.',
   },
+  {
+  id: 'haz-019',
+  type: 'Tsunami',
+  status: 'active',
+  effectRadius: 15000,
+  lat: -38.6167, // Phillip Island — coastal
+  long: 145.2333,
+  description: 'Tsunami warning issued for the Victorian coastline following offshore seismic activity. Coastal residents advised to move away from the shoreline and low-lying areas immediately.',
+},
+{
+  id: 'haz-020',
+  type: 'Landslide',
+  status: 'active',
+  effectRadius: 4000,
+  lat: -37.7833, // Dandenong Ranges — landslide-prone after heavy rain
+  long: 145.3667,
+  description: 'Landslide risk in the Dandenong Ranges following prolonged heavy rainfall. Residents on hillside properties advised to be alert for signs of ground movement.',
+},
+{
+  id: 'haz-021',
+  type: 'Heatwave',
+  status: 'active',
+  effectRadius: 60000,
+  lat: -36.7570, // Bendigo/central Victoria — broad regional coverage
+  long: 144.2794,
+  description: 'Severe heatwave conditions across central Victoria, with temperatures forecast to exceed 42°C for three consecutive days. Vulnerable people advised to stay hydrated and avoid outdoor activity during peak heat.',
+},
+{
+  id: 'haz-022',
+  type: 'Gas leak',
+  status: 'active',
+  effectRadius: 1500,
+  lat: -37.8100, // inner Melbourne suburb — localized incident
+  long: 144.9900,
+  description: 'Gas leak reported at a residential property in Richmond. Nearby residents advised to avoid the area and refrain from using open flames.',
+},
+{
+  id: 'haz-023',
+  type: 'Air quality',
+  status: 'active',
+  effectRadius: 25000,
+  lat: -37.8136, // Melbourne CBD and surrounds — smoke haze coverage
+  long: 144.9631,
+  description: 'Poor air quality across Melbourne due to smoke haze from regional bushfires. People with respiratory conditions advised to stay indoors and keep windows closed.',
+},
+{
+  id: 'haz-024',
+  type: 'Tsunami',
+  status: 'inactive',
+  effectRadius: 12000,
+  lat: -38.3500, // Torquay/surf coast
+  long: 144.3167,
+  description: 'Tsunami warning for the Surf Coast has been cancelled following further analysis of offshore seismic data. No further threat identified.',
+},
+{
+  id: 'haz-025',
+  type: 'Heatwave',
+  status: 'inactive',
+  effectRadius: 40000,
+  lat: -35.2500, // Mallee region
+  long: 142.6667,
+  description: 'Heatwave conditions across the Mallee region have eased following a cool change overnight.',
+},
+{
+  id: 'haz-026',
+  type: 'Air quality',
+  status: 'inactive',
+  effectRadius: 20000,
+  lat: -38.1499, // Geelong
+  long: 144.3617,
+  description: 'Air quality in Geelong has returned to normal levels following the dispersal of earlier smoke haze.',
+},
 ];
 
 const ACTIVE_HAZARDS = HAZARDS.filter((h) => h.status === 'active');
@@ -284,6 +359,16 @@ export function MapScreen() {
   const { height } = useWindowDimensions();
   const [placeLabel, setPlaceLabel] = useState<string | null>(null);
   const [selectedHazard, setSelectedHazard] = useState<Hazard | null>(null);
+
+
+  const [iconsReady, setIconsReady] = useState(false);
+
+  useEffect(() => {
+    // Icon fonts are already loaded at the App root (per your useFonts call),
+    // but give the marker one extra tick to actually paint before freezing it.
+    const timeout = setTimeout(() => setIconsReady(true), 500);
+    return () => clearTimeout(timeout);
+  }, []);
 
   const mapRef = useRef<MapView>(null);
 
@@ -469,6 +554,8 @@ export function MapScreen() {
                     <Marker
                       coordinate={{ latitude: hazard.lat, longitude: hazard.long }}
                       onPress={() => setSelectedHazard(hazard)}
+                      tracksViewChanges={!iconsReady}
+                      
                     >
                       <View
                         style={[
