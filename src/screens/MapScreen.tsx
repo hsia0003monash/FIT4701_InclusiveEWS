@@ -18,6 +18,7 @@ import { useTheme } from '../theme/useTheme';
 // ---------------------------------------------------------------------------
 // Hazard data model
 // ---------------------------------------------------------------------------
+
 type HazardType =
   | 'Fire'
   | 'Chemical'
@@ -54,7 +55,8 @@ interface HazardColour {
   a: number;
 }
 
-const HAZARD_STYLES: Record<HazardType,
+const HAZARD_STYLES: Record<
+  HazardType,
   { icon: keyof typeof MaterialCommunityIcons.glyphMap; theme: HazardColour }
 > = {
   Fire: {
@@ -90,7 +92,7 @@ const HAZARD_STYLES: Record<HazardType,
     theme: { id: 'Flooding', r: 37, g: 99, b: 235, a: 1 },
   },
   Tsunami: {
-    icon: 'waves', 
+    icon: 'waves',
     theme: { id: 'Tsunami', r: 8, g: 47, b: 73, a: 1 }, // deep navy — darker/more severe than Flooding's blue
   },
   Landslide: {
@@ -103,7 +105,7 @@ const HAZARD_STYLES: Record<HazardType,
   },
   'Gas leak': {
     icon: 'gas-cylinder',
-    theme: { id: 'Gas leak', r: 202, g: 138, b: 4, a: 1 }, // amber/warning yellow-orange, distinct from Fire's orange and Chemical's green
+    theme: { id: 'Gas leak', r: 202, g: 138, b: 4, a: 1 }, // amber/warning yellow-orange
   },
   'Air quality': {
     icon: 'weather-hazy',
@@ -114,6 +116,7 @@ const HAZARD_STYLES: Record<HazardType,
     theme: { id: 'Misc', r: 107, g: 114, b: 128, a: 1 },
   },
 };
+
 const toRgba = (c: HazardColour, alpha?: number) =>
   `rgba(${c.r}, ${c.g}, ${c.b}, ${alpha ?? c.a})`;
 
@@ -215,26 +218,28 @@ const HAZARDS: Hazard[] = [
     effectRadius: 10000,
     lat: -38.15,
     long: 141.6167,
-    description: 'Storm system that passed through Warrnambool overnight has cleared. Coastal flood warnings have been lifted.',
+    description:
+      'Storm system that passed through Warrnambool overnight has cleared. Coastal flood warnings have been lifted.',
   },
   {
-  id: 'haz-017',
-  type: 'Flooding',
-  status: 'active',
-  effectRadius: 7000,
-  lat: -38.1600, // Barwon River area near Geelong — flood-prone
-  long: 144.3700,
-  description: 'Major flooding along the Barwon River following sustained heavy rainfall. Residents in low-lying areas urged to move to higher ground.',
-},
-{
-  id: 'haz-018',
-  type: 'Flooding',
-  status: 'inactive',
-  effectRadius: 9000,
-  lat: -36.3667, // Shepparton/Goulburn River area — flood-prone
-  long: 145.4000,
-  description: 'Flooding along the Goulburn River near Shepparton has receded. Some roads remain closed for cleanup.',
-},
+    id: 'haz-017',
+    type: 'Flooding',
+    status: 'active',
+    effectRadius: 7000,
+    lat: -38.16, // Barwon River area near Geelong — flood-prone
+    long: 144.37,
+    description:
+      'Major flooding along the Barwon River following sustained heavy rainfall. Residents in low-lying areas urged to move to higher ground.',
+  },
+  {
+    id: 'haz-018',
+    type: 'Flooding',
+    status: 'inactive',
+    effectRadius: 9000,
+    lat: -36.3667, // Shepparton/Goulburn River area — flood-prone
+    long: 145.4,
+    description: 'Flooding along the Goulburn River near Shepparton has receded. Some roads remain closed for cleanup.',
+  },
 
   // --- Overlapping-radius examples ---
   {
@@ -267,77 +272,83 @@ const HAZARDS: Hazard[] = [
     description: 'Fast-moving grassfire near Lilydale, spreading toward nearby residential areas.',
   },
   {
-  id: 'haz-019',
-  type: 'Tsunami',
-  status: 'active',
-  effectRadius: 15000,
-  lat: -38.6167, // Phillip Island — coastal
-  long: 145.2333,
-  description: 'Tsunami warning issued for the Victorian coastline following offshore seismic activity. Coastal residents advised to move away from the shoreline and low-lying areas immediately.',
-},
-{
-  id: 'haz-020',
-  type: 'Landslide',
-  status: 'active',
-  effectRadius: 4000,
-  lat: -37.7833, // Dandenong Ranges — landslide-prone after heavy rain
-  long: 145.3667,
-  description: 'Landslide risk in the Dandenong Ranges following prolonged heavy rainfall. Residents on hillside properties advised to be alert for signs of ground movement.',
-},
-{
-  id: 'haz-021',
-  type: 'Heatwave',
-  status: 'active',
-  effectRadius: 60000,
-  lat: -36.7570, // Bendigo/central Victoria — broad regional coverage
-  long: 144.2794,
-  description: 'Severe heatwave conditions across central Victoria, with temperatures forecast to exceed 42°C for three consecutive days. Vulnerable people advised to stay hydrated and avoid outdoor activity during peak heat.',
-},
-{
-  id: 'haz-022',
-  type: 'Gas leak',
-  status: 'active',
-  effectRadius: 1500,
-  lat: -37.8100, // inner Melbourne suburb — localized incident
-  long: 144.9900,
-  description: 'Gas leak reported at a residential property in Richmond. Nearby residents advised to avoid the area and refrain from using open flames.',
-},
-{
-  id: 'haz-023',
-  type: 'Air quality',
-  status: 'active',
-  effectRadius: 25000,
-  lat: -37.8136, // Melbourne CBD and surrounds — smoke haze coverage
-  long: 144.9631,
-  description: 'Poor air quality across Melbourne due to smoke haze from regional bushfires. People with respiratory conditions advised to stay indoors and keep windows closed.',
-},
-{
-  id: 'haz-024',
-  type: 'Tsunami',
-  status: 'inactive',
-  effectRadius: 12000,
-  lat: -38.3500, // Torquay/surf coast
-  long: 144.3167,
-  description: 'Tsunami warning for the Surf Coast has been cancelled following further analysis of offshore seismic data. No further threat identified.',
-},
-{
-  id: 'haz-025',
-  type: 'Heatwave',
-  status: 'inactive',
-  effectRadius: 40000,
-  lat: -35.2500, // Mallee region
-  long: 142.6667,
-  description: 'Heatwave conditions across the Mallee region have eased following a cool change overnight.',
-},
-{
-  id: 'haz-026',
-  type: 'Air quality',
-  status: 'inactive',
-  effectRadius: 20000,
-  lat: -38.1499, // Geelong
-  long: 144.3617,
-  description: 'Air quality in Geelong has returned to normal levels following the dispersal of earlier smoke haze.',
-},
+    id: 'haz-019',
+    type: 'Tsunami',
+    status: 'active',
+    effectRadius: 15000,
+    lat: -38.6167, // Phillip Island — coastal
+    long: 145.2333,
+    description:
+      'Tsunami warning issued for the Victorian coastline following offshore seismic activity. Coastal residents advised to move away from the shoreline and low-lying areas immediately.',
+  },
+  {
+    id: 'haz-020',
+    type: 'Landslide',
+    status: 'active',
+    effectRadius: 4000,
+    lat: -37.7833, // Dandenong Ranges — landslide-prone after heavy rain
+    long: 145.3667,
+    description:
+      'Landslide risk in the Dandenong Ranges following prolonged heavy rainfall. Residents on hillside properties advised to be alert for signs of ground movement.',
+  },
+  {
+    id: 'haz-021',
+    type: 'Heatwave',
+    status: 'active',
+    effectRadius: 60000,
+    lat: -36.757, // Bendigo/central Victoria — broad regional coverage
+    long: 144.2794,
+    description:
+      'Severe heatwave conditions across central Victoria, with temperatures forecast to exceed 42°C for three consecutive days. Vulnerable people advised to stay hydrated and avoid outdoor activity during peak heat.',
+  },
+  {
+    id: 'haz-022',
+    type: 'Gas leak',
+    status: 'active',
+    effectRadius: 1500,
+    lat: -37.81, // inner Melbourne suburb — localized incident
+    long: 144.99,
+    description:
+      'Gas leak reported at a residential property in Richmond. Nearby residents advised to avoid the area and refrain from using open flames.',
+  },
+  {
+    id: 'haz-023',
+    type: 'Air quality',
+    status: 'active',
+    effectRadius: 25000,
+    lat: -37.8136, // Melbourne CBD and surrounds — smoke haze coverage
+    long: 144.9631,
+    description:
+      'Poor air quality across Melbourne due to smoke haze from regional bushfires. People with respiratory conditions advised to stay indoors and keep windows closed.',
+  },
+  {
+    id: 'haz-024',
+    type: 'Tsunami',
+    status: 'inactive',
+    effectRadius: 12000,
+    lat: -38.35, // Torquay/surf coast
+    long: 144.3167,
+    description:
+      'Tsunami warning for the Surf Coast has been cancelled following further analysis of offshore seismic data. No further threat identified.',
+  },
+  {
+    id: 'haz-025',
+    type: 'Heatwave',
+    status: 'inactive',
+    effectRadius: 40000,
+    lat: -35.25, // Mallee region
+    long: 142.6667,
+    description: 'Heatwave conditions across the Mallee region have eased following a cool change overnight.',
+  },
+  {
+    id: 'haz-026',
+    type: 'Air quality',
+    status: 'inactive',
+    effectRadius: 20000,
+    lat: -38.1499, // Geelong
+    long: 144.3617,
+    description: 'Air quality in Geelong has returned to normal levels following the dispersal of earlier smoke haze.',
+  },
 ];
 
 const ACTIVE_HAZARDS = HAZARDS.filter((h) => h.status === 'active');
@@ -359,16 +370,8 @@ export function MapScreen() {
   const { height } = useWindowDimensions();
   const [placeLabel, setPlaceLabel] = useState<string | null>(null);
   const [selectedHazard, setSelectedHazard] = useState<Hazard | null>(null);
-
-
+  const [legendOpen, setLegendOpen] = useState(false);
   const [iconsReady, setIconsReady] = useState(false);
-
-  useEffect(() => {
-    // Icon fonts are already loaded at the App root (per your useFonts call),
-    // but give the marker one extra tick to actually paint before freezing it.
-    const timeout = setTimeout(() => setIconsReady(true), 500);
-    return () => clearTimeout(timeout);
-  }, []);
 
   const mapRef = useRef<MapView>(null);
 
@@ -380,40 +383,46 @@ export function MapScreen() {
   } | null>(null);
   const [currentRegion, setCurrentRegion] = useState(region);
 
+  // Give markers one extra tick to paint before freezing tracksViewChanges
+  useEffect(() => {
+    const timeout = setTimeout(() => setIconsReady(true), 500);
+    return () => clearTimeout(timeout);
+  }, []);
+
   // Track the user's live position
   useEffect(() => {
-  let subscription: Location.LocationSubscription;
+    let subscription: Location.LocationSubscription;
 
-  (async () => {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') return;
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return;
 
-    // 1. Try to get last-known location instantly (near-zero latency)
-    const last = await Location.getLastKnownPositionAsync({});
-    if (last) {
-      setRegion({
-        latitude: last.coords.latitude,
-        longitude: last.coords.longitude,
-        latitudeDelta: 0.05,
-        longitudeDelta: 0.05,
-      });
-    }
-
-    // 2. Then start watching for a precise, live-updating fix
-    subscription = await Location.watchPositionAsync(
-      { accuracy: Location.Accuracy.Balanced, timeInterval: 5000, distanceInterval: 10 },
-      (location) => {
-        setRegion((prev) => ({
-          ...location.coords,
-          latitudeDelta: prev?.latitudeDelta ?? 0.05,
-          longitudeDelta: prev?.longitudeDelta ?? 0.05,
-        }));
+      // 1. Try to get last-known location instantly (near-zero latency)
+      const last = await Location.getLastKnownPositionAsync({});
+      if (last) {
+        setRegion({
+          latitude: last.coords.latitude,
+          longitude: last.coords.longitude,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05,
+        });
       }
-    );
-  })();
 
-  return () => subscription?.remove();
-}, []);
+      // 2. Then start watching for a precise, live-updating fix
+      subscription = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.Balanced, timeInterval: 5000, distanceInterval: 10 },
+        (location) => {
+          setRegion((prev) => ({
+            ...location.coords,
+            latitudeDelta: prev?.latitudeDelta ?? 0.05,
+            longitudeDelta: prev?.longitudeDelta ?? 0.05,
+          }));
+        }
+      );
+    })();
+
+    return () => subscription?.remove();
+  }, []);
 
   // Resolve a human-readable place label for the header
   useEffect(() => {
@@ -462,6 +471,19 @@ export function MapScreen() {
       latitudeDelta: currentRegion.latitudeDelta * 1.5,
       longitudeDelta: currentRegion.longitudeDelta * 1.5,
     });
+  };
+
+  // Only one centered overlay (hazard card or legend) should ever be open at once —
+  // opening one always closes the other, which matters especially for the
+  // restricted-field-of-view persona this screen is designed around.
+  const openHazard = (hazard: Hazard) => {
+    setLegendOpen(false);
+    setSelectedHazard(hazard);
+  };
+
+  const toggleLegend = () => {
+    setSelectedHazard(null);
+    setLegendOpen((prev) => !prev);
   };
 
   // -------------------------------------------------------------------------
@@ -553,9 +575,8 @@ export function MapScreen() {
                     />
                     <Marker
                       coordinate={{ latitude: hazard.lat, longitude: hazard.long }}
-                      onPress={() => setSelectedHazard(hazard)}
+                      onPress={() => openHazard(hazard)}
                       tracksViewChanges={!iconsReady}
-                      
                     >
                       <View
                         style={[
@@ -576,85 +597,160 @@ export function MapScreen() {
               })}
             </MapView>
 
-            {/* Hazard detail card */}
+            {/* Hazard legend overlay */}
+            {legendOpen && (
+              <View style={styles.legendOverlay} pointerEvents="box-none">
+                <Pressable
+                  style={StyleSheet.absoluteFillObject}
+                  onPress={() => setLegendOpen(false)}
+                  accessibilityLabel="Dismiss hazard legend"
+                >
+                  <View style={[StyleSheet.absoluteFillObject, styles.scrim]} />
+                </Pressable>
+
+                <View
+                  style={[
+                    styles.legendPanel,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.hairline,
+                      borderRadius: radius.card,
+                      padding: spacing.cardPadding,
+                      gap: spacing.scale[3],
+                    },
+                  ]}
+                >
+                  <View style={styles.legendHeader}>
+                    <RText variant="sectionHeading" color={colors.ink}>
+                      Hazard types
+                    </RText>
+                    <Pressable
+                      style={[
+                        styles.closeButton,
+                        { width: sizing.touchTarget.preferredPrimary, height: sizing.touchTarget.preferredPrimary },
+                      ]}
+                      onPress={() => setLegendOpen(false)}
+                      accessibilityLabel="Close"
+                    >
+                      <Ionicons name="close" size={sizing.icon.medium} color={colors.ink3} />
+                    </Pressable>
+                  </View>
+
+                  <ScrollView style={styles.legendScroll} showsVerticalScrollIndicator={false}>
+                    {(Object.keys(HAZARD_STYLES) as HazardType[]).map((type) => {
+                      const style = HAZARD_STYLES[type];
+                      return (
+                        <View key={type} style={[styles.legendRow, { gap: spacing.scale[3] }]}>
+                          <View
+                            style={[
+                              styles.legendSwatch,
+                              {
+                                width: sizing.icon.hero,
+                                height: sizing.icon.hero,
+                                borderRadius: sizing.icon.hero / 2,
+                                backgroundColor: toRgba(style.theme, 1),
+                              },
+                            ]}
+                          >
+                            <MaterialCommunityIcons name={style.icon} size={sizing.icon.small} color="white" />
+                          </View>
+                          <RText variant="secondary" color={colors.ink}>
+                            {type}
+                          </RText>
+                        </View>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              </View>
+            )}
+
+            {/* Hazard detail overlay */}
             {selectedHazard && (
-  <View style={styles.hazardCardOverlay} pointerEvents="box-none">
-    {/* Dimming scrim behind the card */}
-    <Pressable
-      style={StyleSheet.absoluteFillObject}
-      onPress={() => setSelectedHazard(null)}
-      accessibilityLabel="Dismiss hazard details"
-    >
-      <View style={[StyleSheet.absoluteFillObject, styles.scrim]} />
-    </Pressable>
+              <View style={styles.hazardCardOverlay} pointerEvents="box-none">
+                <Pressable
+                  style={StyleSheet.absoluteFillObject}
+                  onPress={() => setSelectedHazard(null)}
+                  accessibilityLabel="Dismiss hazard details"
+                >
+                  <View style={[StyleSheet.absoluteFillObject, styles.scrim]} />
+                </Pressable>
 
-    <View
-      style={[
-        styles.hazardCard,
-        {
-          backgroundColor: colors.surface,
-          borderColor: colors.hairline,
-          borderRadius: radius.card,
-          padding: spacing.cardPadding,
-          gap: spacing.scale[4],
-        },
-      ]}
-    >
-      <View style={styles.hazardCardHeader}>
-        <View style={[styles.hazardCardTitleRow, { gap: spacing.scale[3] }]}>
-          <View
-            style={[
-              styles.hazardCardIcon,
-              {
-                width: sizing.icon.hero,
-                height: sizing.icon.hero,
-                borderRadius: sizing.icon.hero / 2,
-                backgroundColor: toRgba(HAZARD_STYLES[selectedHazard.type].theme, 1),
-              },
-            ]}
-          >
-            <MaterialCommunityIcons
-              name={HAZARD_STYLES[selectedHazard.type].icon}
-              size={sizing.icon.small}
-              color="white"
-            />
-          </View>
-          <RText variant="bodyEmphasis" color={colors.ink}>
-            {selectedHazard.type}
-          </RText>
-        </View>
-        <Pressable
-  style={[styles.closeButton, { width: sizing.touchTarget.preferredPrimary, height: sizing.touchTarget.preferredPrimary }]}
-  onPress={() => setSelectedHazard(null)}
-  accessibilityLabel="Close"
->
-  <Ionicons name="close" size={sizing.icon.medium} color={colors.ink3} />
-</Pressable>
-      </View>
+                <View
+                  style={[
+                    styles.hazardCard,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.hairline,
+                      borderRadius: radius.card,
+                      padding: spacing.cardPadding,
+                      gap: spacing.scale[4],
+                    },
+                  ]}
+                >
+                  <View style={styles.hazardCardHeader}>
+                    <View style={[styles.hazardCardTitleRow, { gap: spacing.scale[3] }]}>
+                      <View
+                        style={[
+                          styles.hazardCardIcon,
+                          {
+                            width: sizing.icon.hero,
+                            height: sizing.icon.hero,
+                            borderRadius: sizing.icon.hero / 2,
+                            backgroundColor: toRgba(HAZARD_STYLES[selectedHazard.type].theme, 1),
+                          },
+                        ]}
+                      >
+                        <MaterialCommunityIcons
+                          name={HAZARD_STYLES[selectedHazard.type].icon}
+                          size={sizing.icon.small}
+                          color="white"
+                        />
+                      </View>
+                      <RText variant="bodyEmphasis" color={colors.ink}>
+                        {selectedHazard.type}
+                      </RText>
+                    </View>
+                    <Pressable
+                      style={[
+                        styles.closeButton,
+                        { width: sizing.touchTarget.preferredPrimary, height: sizing.touchTarget.preferredPrimary },
+                      ]}
+                      onPress={() => setSelectedHazard(null)}
+                      accessibilityLabel="Close"
+                    >
+                      <Ionicons name="close" size={sizing.icon.medium} color={colors.ink3} />
+                    </Pressable>
+                  </View>
 
-      <View
-        style={[
-          styles.statusBadge,
-          {
-            borderRadius: radius.pill,
-            paddingHorizontal: spacing.scale[4],
-            paddingVertical: spacing.scale[1],
-            backgroundColor: selectedHazard.status === 'active' ? severity.emergency.bg : severity.safe.bg,
-            borderColor: selectedHazard.status === 'active' ? severity.emergency.border : severity.safe.border,
-          },
-        ]}
-      >
-        <RText variant="caption" color={selectedHazard.status === 'active' ? severity.emergency.fg : severity.safe.fg}>
-          {selectedHazard.status === 'active' ? 'Active' : 'Inactive'}
-        </RText>
-      </View>
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      {
+                        borderRadius: radius.pill,
+                        paddingHorizontal: spacing.scale[4],
+                        paddingVertical: spacing.scale[1],
+                        backgroundColor:
+                          selectedHazard.status === 'active' ? severity.emergency.bg : severity.safe.bg,
+                        borderColor:
+                          selectedHazard.status === 'active' ? severity.emergency.border : severity.safe.border,
+                      },
+                    ]}
+                  >
+                    <RText
+                      variant="caption"
+                      color={selectedHazard.status === 'active' ? severity.emergency.fg : severity.safe.fg}
+                    >
+                      {selectedHazard.status === 'active' ? 'Active' : 'Inactive'}
+                    </RText>
+                  </View>
 
-      <RText variant="body" color={colors.ink2}>
-        {selectedHazard.description}
-      </RText>
-    </View>
-  </View>
-)}
+                  <RText variant="body" color={colors.ink2}>
+                    {selectedHazard.description}
+                  </RText>
+                </View>
+              </View>
+            )}
 
             <Pressable style={styles.locationButton} onPress={recenter}>
               <Ionicons name="locate" size={28} color={colors.ink} />
@@ -668,6 +764,14 @@ export function MapScreen() {
                 <Ionicons name="remove" size={28} color={colors.ink} />
               </Pressable>
             </View>
+
+            <Pressable
+              style={styles.legendButton}
+              onPress={toggleLegend}
+              accessibilityLabel={legendOpen ? 'Hide hazard legend' : 'Show hazard legend'}
+            >
+              <Ionicons name="list" size={24} color={colors.ink} />
+            </Pressable>
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -724,20 +828,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   hazardCardOverlay: {
-  ...StyleSheet.absoluteFillObject, // fills the mapContainer exactly
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: 24, // keeps card off the very edges on small screens
-},
-hazardCard: {
-  width: '100%',
-  maxWidth: 340, // keeps the card from stretching edge-to-edge on tablets/landscape
-  borderWidth: 1,
-  elevation: 6,
-  shadowColor: '#000',
-  shadowOpacity: 0.15,
-  shadowRadius: 6,
-},
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  hazardCard: {
+    width: '100%',
+    maxWidth: 340,
+    borderWidth: 1,
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+  },
   hazardCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -789,11 +893,58 @@ hazardCard: {
     shadowRadius: 4,
   },
   scrim: {
-  backgroundColor: 'rgba(0,0,0,0.35)',
-},
-closeButton: {
-  alignItems: 'center',
-  justifyContent: 'center',
-},
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  closeButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  legendButton: {
+    position: 'absolute',
+    bottom: BASE_BOTTOM,
+    left: 20,
+    width: BUTTON_SIZE,
+    height: BUTTON_SIZE,
+    borderRadius: 24,
+    backgroundColor: 'white',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  legendOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  legendPanel: {
+    width: '100%',
+    maxWidth: 340,
+    maxHeight: '75%',
+    borderWidth: 1,
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+  },
+  legendHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  legendScroll: {
+    flexGrow: 0,
+  },
+  legendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  legendSwatch: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });
- 
