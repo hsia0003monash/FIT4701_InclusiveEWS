@@ -357,7 +357,6 @@ const ACTIVE_HAZARDS = HAZARDS.filter((h) => h.status === 'active');
 // Layout constants
 // ---------------------------------------------------------------------------
 
-const BUTTON_SIZE = 70;
 const BUTTON_GAP = 20;
 const BASE_BOTTOM = 25;
 
@@ -382,6 +381,7 @@ export function MapScreen() {
     longitudeDelta: number;
   } | null>(null);
   const [currentRegion, setCurrentRegion] = useState(region);
+  const [heading, setHeading] = useState<number | null>(null);
 
   // Give markers one extra tick to paint before freezing tracksViewChanges
   useEffect(() => {
@@ -419,6 +419,25 @@ export function MapScreen() {
           }));
         }
       );
+    })();
+
+    return () => subscription?.remove();
+  }, []);
+
+  // Track device heading (compass direction) for the user location marker's
+  // direction cone. Throttled to a 5° threshold to avoid excessive re-renders
+  // from raw compass jitter.
+  useEffect(() => {
+    let subscription: Location.LocationSubscription;
+
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return;
+
+      subscription = await Location.watchHeadingAsync((headingData) => {
+        const newHeading = headingData.trueHeading >= 0 ? headingData.trueHeading : headingData.magHeading;
+        setHeading((prev) => (prev === null || Math.abs(prev - newHeading) > 5 ? newHeading : prev));
+      });
     })();
 
     return () => subscription?.remove();
@@ -493,7 +512,7 @@ export function MapScreen() {
     return (
       <View style={[styles.screen, { backgroundColor: colors.bg }]}>
         <SafeAreaView edges={['top']} style={styles.flex}>
-          <ScrollView contentContainerStyle={styles.content}>
+          <ScrollView contentContainerStyle={[styles.content, { padding: spacing.screenPadding, gap: spacing.screenPadding }]}>
             <View style={styles.headerRow}>
               <View style={styles.headerText}>
                 <RText variant="eyebrowLabel" color={colors.ink3}>
@@ -505,7 +524,16 @@ export function MapScreen() {
                 </View>
               </View>
               <View
-                style={[styles.avatar, { backgroundColor: colors.ink, borderColor: colors.hairline }]}
+                style={[
+                  styles.avatar,
+                  {
+                    width: sizing.avatar.medium,
+                    height: sizing.avatar.medium,
+                    borderRadius: sizing.avatar.medium / 2,
+                    backgroundColor: colors.ink,
+                    borderColor: colors.hairline,
+                  },
+                ]}
                 accessibilityRole="button"
                 accessibilityLabel="Your profile"
               >
@@ -529,7 +557,7 @@ export function MapScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>
       <SafeAreaView edges={['top']} style={styles.flex}>
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView contentContainerStyle={[styles.content, { padding: spacing.screenPadding, gap: spacing.screenPadding }]}>
           <View style={styles.headerRow}>
             <View style={styles.headerText}>
               <RText variant="eyebrowLabel" color={colors.ink3}>
@@ -543,7 +571,16 @@ export function MapScreen() {
               </View>
             </View>
             <View
-              style={[styles.avatar, { backgroundColor: colors.ink, borderColor: colors.hairline }]}
+              style={[
+                styles.avatar,
+                {
+                  width: sizing.avatar.medium,
+                  height: sizing.avatar.medium,
+                  borderRadius: sizing.avatar.medium / 2,
+                  backgroundColor: colors.ink,
+                  borderColor: colors.hairline,
+                },
+              ]}
               accessibilityRole="button"
               accessibilityLabel="Your profile"
             >
@@ -560,8 +597,38 @@ export function MapScreen() {
               ref={mapRef}
               onRegionChangeComplete={setCurrentRegion}
               showsMyLocationButton={false}
-              showsUserLocation
+              showsUserLocation={false}
             >
+              <Marker
+                coordinate={{ latitude: region.latitude, longitude: region.longitude }}
+                anchor={{ x: 0.5, y: 0.78 }}
+                tracksViewChanges
+                flat
+              >
+                <View style={styles.userLocationWrapper}>
+                  <View
+                    style={{
+                      transform: [{ rotate: `${heading ?? 0}deg` }],
+                      alignItems: 'center',
+                      opacity: heading !== null ? 1 : 0,
+                    }}
+                  >
+                    <View style={[styles.headingCone, { borderBottomColor: colors.accent }]} />
+                    <View
+                      style={[
+                        styles.userLocationDot,
+                        {
+                          width: sizing.icon.large,
+                          height: sizing.icon.large,
+                          borderRadius: sizing.icon.large / 2,
+                          backgroundColor: colors.accent,
+                          borderColor: colors.surface,
+                        },
+                      ]}
+                    />
+                  </View>
+                </View>
+              </Marker>
               {ACTIVE_HAZARDS.map((hazard) => {
                 const style = HAZARD_STYLES[hazard.type];
                 return (
@@ -582,14 +649,14 @@ export function MapScreen() {
                         style={[
                           styles.hazardMarker,
                           {
-                            width: sizing.avatar.medium,
-                            height: sizing.avatar.medium,
-                            borderRadius: sizing.avatar.medium / 2,
+                            width: sizing.avatar.large,
+                            height: sizing.avatar.large,
+                            borderRadius: sizing.avatar.large / 2,
                             backgroundColor: toRgba(style.theme, 1),
                           },
                         ]}
                       >
-                        <MaterialCommunityIcons name={style.icon} size={sizing.icon.medium} color="white" />
+                        <MaterialCommunityIcons name={style.icon} size={sizing.icon.large} color="white" />
                       </View>
                     </Marker>
                   </Fragment>
@@ -752,26 +819,69 @@ export function MapScreen() {
               </View>
             )}
 
-            <Pressable style={styles.locationButton} onPress={recenter}>
-              <Ionicons name="locate" size={28} color={colors.ink} />
-            </Pressable>
-
-            <View style={styles.zoomControls}>
-              <Pressable style={styles.zoomButton} onPress={zoomIn}>
-                <Ionicons name="add" size={28} color={colors.ink} />
+            {/* Centralized control cluster — legend, zoom out/in, locate */}
+            <View style={styles.controlCluster}>
+              <Pressable
+                style={[
+                  styles.controlButton,
+                  {
+                    width: sizing.touchTarget.preferredPrimary,
+                    height: sizing.touchTarget.preferredPrimary,
+                    borderRadius: sizing.touchTarget.preferredPrimary / 2,
+                    backgroundColor: colors.surface,
+                  },
+                ]}
+                onPress={toggleLegend}
+                accessibilityLabel={legendOpen ? 'Hide hazard legend' : 'Show hazard legend'}
+              >
+                <Ionicons name="list" size={24} color={colors.ink} />
               </Pressable>
-              <Pressable style={styles.zoomButton} onPress={zoomOut}>
+              <Pressable
+                style={[
+                  styles.controlButton,
+                  {
+                    width: sizing.touchTarget.preferredPrimary,
+                    height: sizing.touchTarget.preferredPrimary,
+                    borderRadius: sizing.touchTarget.preferredPrimary / 2,
+                    backgroundColor: colors.surface,
+                  },
+                ]}
+                onPress={zoomOut}
+                accessibilityLabel="Zoom out"
+              >
                 <Ionicons name="remove" size={28} color={colors.ink} />
               </Pressable>
+              <Pressable
+                style={[
+                  styles.controlButton,
+                  {
+                    width: sizing.touchTarget.preferredPrimary,
+                    height: sizing.touchTarget.preferredPrimary,
+                    borderRadius: sizing.touchTarget.preferredPrimary / 2,
+                    backgroundColor: colors.surface,
+                  },
+                ]}
+                onPress={zoomIn}
+                accessibilityLabel="Zoom in"
+              >
+                <Ionicons name="add" size={28} color={colors.ink} />
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.controlButton,
+                  {
+                    width: sizing.touchTarget.preferredPrimary,
+                    height: sizing.touchTarget.preferredPrimary,
+                    borderRadius: sizing.touchTarget.preferredPrimary / 2,
+                    backgroundColor: colors.surface,
+                  },
+                ]}
+                onPress={recenter}
+                accessibilityLabel="Center on my location"
+              >
+                <Ionicons name="locate" size={28} color={colors.ink} />
+              </Pressable>
             </View>
-
-            <Pressable
-              style={styles.legendButton}
-              onPress={toggleLegend}
-              accessibilityLabel={legendOpen ? 'Hide hazard legend' : 'Show hazard legend'}
-            >
-              <Ionicons name="list" size={24} color={colors.ink} />
-            </Pressable>
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -790,10 +900,7 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
-  content: {
-    padding: 20,
-    gap: 20,
-  },
+  content: {},
   headerRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -808,9 +915,6 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -826,6 +930,27 @@ const styles = StyleSheet.create({
   hazardMarker: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  userLocationDot: {
+    borderWidth: 3,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+  },
+  userLocationWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headingCone: {
+    width: 0,
+    height: 0,
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderBottomWidth: 14,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    marginBottom: 2,
   },
   hazardCardOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -859,39 +984,6 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     borderWidth: 1,
   },
-  locationButton: {
-    position: 'absolute',
-    bottom: BASE_BOTTOM,
-    right: 20,
-    width: BUTTON_SIZE,
-    height: BUTTON_SIZE,
-    borderRadius: 24,
-    backgroundColor: 'white',
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-  },
-  zoomControls: {
-    position: 'absolute',
-    bottom: BASE_BOTTOM + BUTTON_SIZE + BUTTON_GAP,
-    right: 20,
-    gap: BUTTON_GAP,
-  },
-  zoomButton: {
-    width: BUTTON_SIZE,
-    height: BUTTON_SIZE,
-    borderRadius: 24,
-    backgroundColor: 'white',
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-  },
   scrim: {
     backgroundColor: 'rgba(0,0,0,0.35)',
   },
@@ -899,14 +991,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  legendButton: {
+  controlCluster: {
     position: 'absolute',
     bottom: BASE_BOTTOM,
-    left: 20,
-    width: BUTTON_SIZE,
-    height: BUTTON_SIZE,
-    borderRadius: 24,
-    backgroundColor: 'white',
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: BUTTON_GAP,
+  },
+  controlButton: {
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 4,
