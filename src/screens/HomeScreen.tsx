@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Speech from 'expo-speech';
 import { RButton } from '../components/RButton';
 import { RCard } from '../components/RCard';
+import { RCenteredOverlay } from '../components/RCenteredOverlay';
 import { RText } from '../components/RText';
 import { SeverityBadge } from '../components/SeverityBadge';
 import { useTheme } from '../theme/useTheme';
@@ -190,93 +191,55 @@ export function HomeScreen({ family, hazards, onSeeAllFamily }: HomeScreenProps)
           </RCard>
         </ScrollView>
 
-        {/* Hazard detail overlay — same centered scrim pattern used on Map/Family screens */}
+        {/* Hazard detail overlay */}
         {detailOpen && featuredHazard && hazardStyle && (
-          <View style={styles.panelOverlay} pointerEvents="box-none">
-            <Pressable
-              style={StyleSheet.absoluteFillObject}
-              onPress={() => setDetailOpen(false)}
-              accessibilityLabel="Dismiss hazard details"
-            >
-              <View style={[StyleSheet.absoluteFillObject, styles.scrim]} />
-            </Pressable>
-
+          <RCenteredOverlay title={featuredHazard.type} onDismiss={() => setDetailOpen(false)}>
             <View
               style={[
-                styles.panel,
+                styles.panelIcon,
                 {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.hairline,
-                  borderRadius: radius.card,
-                  padding: spacing.cardPadding,
-                  gap: spacing.scale[4],
+                  width: sizing.icon.hero,
+                  height: sizing.icon.hero,
+                  borderRadius: sizing.icon.hero / 2,
+                  backgroundColor: toRgba(hazardStyle.theme, 1),
                 },
               ]}
             >
-              <View style={styles.panelHeader}>
-                <View style={[styles.panelTitleRow, { gap: spacing.scale[3] }]}>
-                  <View
-                    style={[
-                      styles.panelIcon,
-                      {
-                        width: sizing.icon.hero,
-                        height: sizing.icon.hero,
-                        borderRadius: sizing.icon.hero / 2,
-                        backgroundColor: toRgba(hazardStyle.theme, 1),
-                      },
-                    ]}
-                  >
-                    <MaterialCommunityIcons name={hazardStyle.icon} size={sizing.icon.small} color="white" />
-                  </View>
-                  <RText variant="bodyEmphasis" color={colors.ink}>
-                    {featuredHazard.type}
-                  </RText>
-                </View>
-                <Pressable
-                  style={[
-                    styles.closeButton,
-                    { width: sizing.touchTarget.preferredPrimary, height: sizing.touchTarget.preferredPrimary },
-                  ]}
-                  onPress={() => setDetailOpen(false)}
-                  accessibilityLabel="Close"
-                >
-                  <Ionicons name="close" size={sizing.icon.medium} color={colors.ink3} />
-                </Pressable>
-              </View>
-
-              <View
-                style={[
-                  styles.statusBadge,
-                  {
-                    borderRadius: radius.pill,
-                    paddingHorizontal: spacing.scale[4],
-                    paddingVertical: spacing.scale[1],
-                    backgroundColor: severity[tone].bg,
-                    borderColor: severity[tone].border,
-                  },
-                ]}
-              >
-                <RText variant="caption" color={severity[tone].fg}>
-                  {tone.toUpperCase()}
-                </RText>
-              </View>
-
-              <RText variant="body" color={colors.ink2}>
-                {featuredHazard.description}
-              </RText>
-
-              <View style={{ gap: spacing.scale[1] }}>
-                <RText variant="caption" color={colors.ink3}>
-                  Effect radius: {(featuredHazard.effectRadius / 1000).toFixed(1)} km
-                </RText>
-                {featuredHazard.updated && (
-                  <RText variant="caption" color={colors.ink3}>
-                    Updated {featuredHazard.updated}
-                  </RText>
-                )}
-              </View>
+              <MaterialCommunityIcons name={hazardStyle.icon} size={sizing.icon.small} color="white" />
             </View>
-          </View>
+
+            <View
+              style={[
+                styles.statusBadge,
+                {
+                  borderRadius: radius.pill,
+                  paddingHorizontal: spacing.scale[4],
+                  paddingVertical: spacing.scale[1],
+                  backgroundColor: severity[tone].bg,
+                  borderColor: severity[tone].border,
+                },
+              ]}
+            >
+              <RText variant="caption" color={severity[tone].fg}>
+                {tone.toUpperCase()}
+              </RText>
+            </View>
+
+            <RText variant="body" color={colors.ink2}>
+              {featuredHazard.description}
+            </RText>
+
+            <View style={{ gap: spacing.scale[1] }}>
+              <RText variant="caption" color={colors.ink3}>
+                Effect radius: {(featuredHazard.effectRadius / 1000).toFixed(1)} km
+              </RText>
+              {featuredHazard.updated && (
+                <RText variant="caption" color={colors.ink3}>
+                  Updated {featuredHazard.updated}
+                </RText>
+              )}
+            </View>
+          </RCenteredOverlay>
         )}
       </SafeAreaView>
     </View>
@@ -364,31 +327,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: 4,
   },
-  panelOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  panel: {
-    width: '100%',
-    maxWidth: 380,
-    maxHeight: '85%',
-    borderWidth: 1,
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-  },
-  panelHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  panelTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
   panelIcon: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -396,12 +334,5 @@ const styles = StyleSheet.create({
   statusBadge: {
     alignSelf: 'flex-start',
     borderWidth: 1,
-  },
-  closeButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scrim: {
-    backgroundColor: 'rgba(0,0,0,0.35)',
   },
 });

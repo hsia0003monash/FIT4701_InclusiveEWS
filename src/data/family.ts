@@ -6,7 +6,7 @@ import type { SeverityTone } from '../theme/tokens';
 // ---------------------------------------------------------------------------
 
 
-export type FamilyStatus = 'safe' | 'checkIn' | 'help';
+export type FamilyStatus = 'safe' | 'checkIn' | 'help' | 'evacuating';
 
 export interface FamilyMember {
   id: string;
@@ -24,7 +24,17 @@ export const FAMILY_STATUS_META: Record<
   { label: string; icon: keyof typeof Ionicons.glyphMap; tone: SeverityTone }
 > = {
   safe: { label: 'Safe', icon: 'checkmark-circle', tone: 'safe' },
-  checkIn: { label: 'Check in', icon: 'help-circle', tone: 'watch' },
+  checkIn: { label: 'Awaiting Update', icon: 'help-circle', tone: 'watch' },
+  evacuating: {label: 'Moving to safety',icon: 'walk', tone: 'advice'},
+  help: { label: 'Needs help', icon: 'alert-circle', tone: 'emergency' },
+};
+
+export const SELECTABLE_FAMILY_STATUSES: Record<
+  FamilyStatus,
+  { label: string; icon: keyof typeof Ionicons.glyphMap; tone: SeverityTone }
+> = {
+  safe: { label: 'Safe', icon: 'checkmark-circle', tone: 'safe' },
+  evacuating: {label: 'Moving to safety',icon: 'walk', tone: 'advice'},
   help: { label: 'Needs help', icon: 'alert-circle', tone: 'emergency' },
 };
 
@@ -51,7 +61,7 @@ export const INITIAL_FAMILY: FamilyMember[] = [
     name: 'Dad',
     relationship: 'Father',
     location: 'Apt 12B · Same building',
-    status: 'safe',
+    status: 'evacuating',
     updated: '12 min ago',
   },
   {
@@ -67,7 +77,7 @@ export const INITIAL_FAMILY: FamilyMember[] = [
     name: 'Husband',
     relationship: 'Husband',
     location: 'Work · Southbank',
-    status: 'safe',
+    status: 'help',
     updated: '1h ago',
   },
 ];

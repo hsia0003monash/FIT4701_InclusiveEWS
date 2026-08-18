@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import MapView, { Circle, Marker } from 'react-native-maps';
 
+import { RCenteredOverlay } from '../components/RCenteredOverlay';
 import { RText } from '../components/RText';
 import { useTheme } from '../theme/useTheme';
 import { Hazard, HazardType, HAZARD_STYLES, toRgba } from '../data/hazards';
@@ -336,157 +337,72 @@ export function MapScreen({ hazards }: MapScreenProps) {
 
             {/* Hazard legend overlay */}
             {legendOpen && (
-              <View style={styles.legendOverlay} pointerEvents="box-none">
-                <Pressable
-                  style={StyleSheet.absoluteFillObject}
-                  onPress={() => setLegendOpen(false)}
-                  accessibilityLabel="Dismiss hazard legend"
-                >
-                  <View style={[StyleSheet.absoluteFillObject, styles.scrim]} />
-                </Pressable>
-
-                <View
-                  style={[
-                    styles.legendPanel,
-                    {
-                      backgroundColor: colors.surface,
-                      borderColor: colors.hairline,
-                      borderRadius: radius.card,
-                      padding: spacing.cardPadding,
-                      gap: spacing.scale[3],
-                    },
-                  ]}
-                >
-                  <View style={styles.legendHeader}>
-                    <RText variant="sectionHeading" color={colors.ink}>
-                      Hazard types
-                    </RText>
-                    <Pressable
-                      style={[
-                        styles.closeButton,
-                        { width: sizing.touchTarget.preferredPrimary, height: sizing.touchTarget.preferredPrimary },
-                      ]}
-                      onPress={() => setLegendOpen(false)}
-                      accessibilityLabel="Close"
-                    >
-                      <Ionicons name="close" size={sizing.icon.medium} color={colors.ink3} />
-                    </Pressable>
-                  </View>
-
-                  <ScrollView style={styles.legendScroll} showsVerticalScrollIndicator={false}>
-                    {(Object.keys(HAZARD_STYLES) as HazardType[]).map((type) => {
-                      const style = HAZARD_STYLES[type];
-                      return (
-                        <View key={type} style={[styles.legendRow, { gap: spacing.scale[3] }]}>
-                          <View
-                            style={[
-                              styles.legendSwatch,
-                              {
-                                width: sizing.icon.hero,
-                                height: sizing.icon.hero,
-                                borderRadius: sizing.icon.hero / 2,
-                                backgroundColor: toRgba(style.theme, 1),
-                              },
-                            ]}
-                          >
-                            <MaterialCommunityIcons name={style.icon} size={sizing.icon.small} color="white" />
-                          </View>
-                          <RText variant="secondary" color={colors.ink}>
-                            {type}
-                          </RText>
+              <RCenteredOverlay title="Hazard types" onDismiss={() => setLegendOpen(false)} maxWidth={340}>
+                <ScrollView style={styles.legendScroll} showsVerticalScrollIndicator={false}>
+                  {(Object.keys(HAZARD_STYLES) as HazardType[]).map((type) => {
+                    const style = HAZARD_STYLES[type];
+                    return (
+                      <View key={type} style={[styles.legendRow, { gap: spacing.scale[3] }]}>
+                        <View
+                          style={[
+                            styles.legendSwatch,
+                            {
+                              width: sizing.icon.hero,
+                              height: sizing.icon.hero,
+                              borderRadius: sizing.icon.hero / 2,
+                              backgroundColor: toRgba(style.theme, 1),
+                            },
+                          ]}
+                        >
+                          <MaterialCommunityIcons name={style.icon} size={sizing.icon.small} color="white" />
                         </View>
-                      );
-                    })}
-                  </ScrollView>
-                </View>
-              </View>
+                        <RText variant="secondary" color={colors.ink}>
+                          {type}
+                        </RText>
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+              </RCenteredOverlay>
             )}
 
             {/* Hazard detail overlay */}
             {selectedHazard && (
-              <View style={styles.hazardCardOverlay} pointerEvents="box-none">
-                <Pressable
-                  style={StyleSheet.absoluteFillObject}
-                  onPress={() => setSelectedHazard(null)}
-                  accessibilityLabel="Dismiss hazard details"
-                >
-                  <View style={[StyleSheet.absoluteFillObject, styles.scrim]} />
-                </Pressable>
+              <RCenteredOverlay title={selectedHazard.type} onDismiss={() => setSelectedHazard(null)}>
+                <View style={[styles.hazardCardIcon, { width: sizing.icon.hero, height: sizing.icon.hero, borderRadius: sizing.icon.hero / 2, backgroundColor: toRgba(HAZARD_STYLES[selectedHazard.type].theme, 1) }]}>
+                  <MaterialCommunityIcons
+                    name={HAZARD_STYLES[selectedHazard.type].icon}
+                    size={sizing.icon.small}
+                    color="white"
+                  />
+                </View>
 
                 <View
                   style={[
-                    styles.hazardCard,
+                    styles.statusBadge,
                     {
-                      backgroundColor: colors.surface,
-                      borderColor: colors.hairline,
-                      borderRadius: radius.card,
-                      padding: spacing.cardPadding,
-                      gap: spacing.scale[4],
+                      borderRadius: radius.pill,
+                      paddingHorizontal: spacing.scale[4],
+                      paddingVertical: spacing.scale[1],
+                      backgroundColor:
+                        selectedHazard.status === 'active' ? severity.emergency.bg : severity.safe.bg,
+                      borderColor:
+                        selectedHazard.status === 'active' ? severity.emergency.border : severity.safe.border,
                     },
                   ]}
                 >
-                  <View style={styles.hazardCardHeader}>
-                    <View style={[styles.hazardCardTitleRow, { gap: spacing.scale[3] }]}>
-                      <View
-                        style={[
-                          styles.hazardCardIcon,
-                          {
-                            width: sizing.icon.hero,
-                            height: sizing.icon.hero,
-                            borderRadius: sizing.icon.hero / 2,
-                            backgroundColor: toRgba(HAZARD_STYLES[selectedHazard.type].theme, 1),
-                          },
-                        ]}
-                      >
-                        <MaterialCommunityIcons
-                          name={HAZARD_STYLES[selectedHazard.type].icon}
-                          size={sizing.icon.small}
-                          color="white"
-                        />
-                      </View>
-                      <RText variant="bodyEmphasis" color={colors.ink}>
-                        {selectedHazard.type}
-                      </RText>
-                    </View>
-                    <Pressable
-                      style={[
-                        styles.closeButton,
-                        { width: sizing.touchTarget.preferredPrimary, height: sizing.touchTarget.preferredPrimary },
-                      ]}
-                      onPress={() => setSelectedHazard(null)}
-                      accessibilityLabel="Close"
-                    >
-                      <Ionicons name="close" size={sizing.icon.medium} color={colors.ink3} />
-                    </Pressable>
-                  </View>
-
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      {
-                        borderRadius: radius.pill,
-                        paddingHorizontal: spacing.scale[4],
-                        paddingVertical: spacing.scale[1],
-                        backgroundColor:
-                          selectedHazard.status === 'active' ? severity.emergency.bg : severity.safe.bg,
-                        borderColor:
-                          selectedHazard.status === 'active' ? severity.emergency.border : severity.safe.border,
-                      },
-                    ]}
+                  <RText
+                    variant="caption"
+                    color={selectedHazard.status === 'active' ? severity.emergency.fg : severity.safe.fg}
                   >
-                    <RText
-                      variant="caption"
-                      color={selectedHazard.status === 'active' ? severity.emergency.fg : severity.safe.fg}
-                    >
-                      {selectedHazard.status === 'active' ? 'Active' : 'Inactive'}
-                    </RText>
-                  </View>
-
-                  <RText variant="body" color={colors.ink2}>
-                    {selectedHazard.description}
+                    {selectedHazard.status === 'active' ? 'Active' : 'Inactive'}
                   </RText>
                 </View>
-              </View>
+
+                <RText variant="body" color={colors.ink2}>
+                  {selectedHazard.description}
+                </RText>
+              </RCenteredOverlay>
             )}
 
             {/* Centralized control cluster — legend, zoom out/in, locate */}
@@ -622,30 +538,6 @@ const styles = StyleSheet.create({
     borderRightColor: 'transparent',
     marginBottom: 2,
   },
-  hazardCardOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  hazardCard: {
-    width: '100%',
-    maxWidth: 340,
-    borderWidth: 1,
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-  },
-  hazardCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  hazardCardTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
   hazardCardIcon: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -653,13 +545,6 @@ const styles = StyleSheet.create({
   statusBadge: {
     alignSelf: 'flex-start',
     borderWidth: 1,
-  },
-  scrim: {
-    backgroundColor: 'rgba(0,0,0,0.35)',
-  },
-  closeButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   controlCluster: {
     position: 'absolute',
@@ -677,27 +562,6 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.2,
     shadowRadius: 4,
-  },
-  legendOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  legendPanel: {
-    width: '100%',
-    maxWidth: 340,
-    maxHeight: '75%',
-    borderWidth: 1,
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-  },
-  legendHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
   },
   legendScroll: {
     flexGrow: 0,

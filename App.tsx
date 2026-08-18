@@ -14,9 +14,11 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { MapScreen } from './src/screens/MapScreen';
 import { FamilyScreen } from './src/screens/FamilyScreen';
+import { PlansScreen } from './src/screens/PlansScreen';
 import { RTabBar, TabKey } from './src/components/RTabBar';
 import { INITIAL_FAMILY, FamilyMember } from './src/data/family';
 import { INITIAL_HAZARDS, Hazard } from './src/data/hazards';
+import { INITIAL_PLANS, INITIAL_SAFE_LOCATIONS, EvacuationPlan, SafeLocation } from './src/data/plans';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -40,6 +42,11 @@ export default function App() {
   // (featured alert card) both read from this single app-level list.
   const [hazards, setHazards] = useState<Hazard[]>(INITIAL_HAZARDS);
 
+  // Same pattern again for plans and safe locations — both owned by
+  // PlansScreen, but lifted to app scope in case other screens need them later.
+  const [plans, setPlans] = useState<EvacuationPlan[]>(INITIAL_PLANS);
+  const [safeLocations, setSafeLocations] = useState<SafeLocation[]>(INITIAL_SAFE_LOCATIONS);
+
   const onLayout = useCallback(async () => {
     if (fontsLoaded) {
       await SplashScreen.hideAsync();
@@ -59,6 +66,14 @@ export default function App() {
           )}
           {activeTab === 'Map' && <MapScreen hazards={hazards} />}
           {activeTab === 'Family' && <FamilyScreen family={family} onUpdateFamily={setFamily} />}
+          {activeTab === 'Plans' && (
+            <PlansScreen
+              plans={plans}
+              onUpdatePlans={setPlans}
+              safeLocations={safeLocations}
+              onUpdateSafeLocations={setSafeLocations}
+            />
+          )}
         </View>
         <RTabBar active={activeTab} onSelect={setActiveTab} />
         <StatusBar style="auto" />

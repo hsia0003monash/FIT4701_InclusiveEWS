@@ -1,14 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RButton } from '../components/RButton';
 import { RCard } from '../components/RCard';
+import { RCenteredOverlay } from '../components/RCenteredOverlay';
+import { RFormField } from '../components/RFormField';
 import { RText } from '../components/RText';
 import { SeverityBadge } from '../components/SeverityBadge';
 import { useTheme } from '../theme/useTheme';
 import type { Theme } from '../theme/useTheme';
-import { FAMILY_STATUS_META, FamilyMember, FamilyStatus } from '../data/family';
+import { FAMILY_STATUS_META, FamilyMember, FamilyStatus, SELECTABLE_FAMILY_STATUSES } from '../data/family';
 
 interface FamilyScreenProps {
   family: FamilyMember[];
@@ -40,7 +42,7 @@ function StatusSelector({
 
   return (
     <View style={{ gap: spacing.scale[3] }}>
-      {(Object.keys(FAMILY_STATUS_META) as FamilyStatus[]).map((status) => {
+      {SELECTABLE_FAMILY_STATUSES.map((status) => {
         const meta = FAMILY_STATUS_META[status];
         const tone = severity[meta.tone];
         const selected = value === status;
@@ -71,50 +73,6 @@ function StatusSelector({
           </Pressable>
         );
       })}
-    </View>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Simple labeled text field for the add/edit form
-// ---------------------------------------------------------------------------
-function FormField({
-  label,
-  value,
-  onChangeText,
-  theme,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (text: string) => void;
-  theme: Theme;
-  placeholder?: string;
-}) {
-  const { colors, spacing, radius } = theme;
-
-  return (
-    <View style={{ gap: spacing.scale[1] }}>
-      <RText variant="caption" color={colors.ink3}>
-        {label}
-      </RText>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={colors.ink3}
-        accessibilityLabel={label}
-        style={[
-          styles.textInput,
-          {
-            borderRadius: radius.md,
-            borderColor: colors.hairline,
-            backgroundColor: colors.surface2,
-            color: colors.ink,
-            paddingHorizontal: spacing.scale[5],
-          },
-        ]}
-      />
     </View>
   );
 }
@@ -307,39 +265,10 @@ export function FamilyScreen({ family, onUpdateFamily }: FamilyScreenProps) {
 
         {/* Member detail / add / edit overlay */}
         {panel && (
-          <View style={styles.panelOverlay} pointerEvents="box-none">
-            <Pressable style={StyleSheet.absoluteFillObject} onPress={closePanel} accessibilityLabel="Dismiss">
-              <View style={[StyleSheet.absoluteFillObject, styles.scrim]} />
-            </Pressable>
-
-            <View
-              style={[
-                styles.panel,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.hairline,
-                  borderRadius: radius.card,
-                  padding: spacing.cardPadding,
-                  gap: spacing.scale[5],
-                },
-              ]}
-            >
-              <View style={styles.panelHeader}>
-                <RText variant="bodyEmphasis" color={colors.ink}>
-                  {panel.mode === 'add' ? 'Add family member' : panel.mode === 'edit' ? 'Edit member' : panel.member.name}
-                </RText>
-                <Pressable
-                  style={[
-                    styles.closeButton,
-                    { width: sizing.touchTarget.preferredPrimary, height: sizing.touchTarget.preferredPrimary },
-                  ]}
-                  onPress={closePanel}
-                  accessibilityLabel="Close"
-                >
-                  <Ionicons name="close" size={sizing.icon.medium} color={colors.ink3} />
-                </Pressable>
-              </View>
-
+          <RCenteredOverlay
+            title={panel.mode === 'add' ? 'Add family member' : panel.mode === 'edit' ? 'Edit member' : panel.member.name}
+            onDismiss={closePanel}
+          >
               {panel.mode === 'view' && (
                 <>
                   <View style={{ gap: spacing.scale[2] }}>
@@ -402,19 +331,17 @@ export function FamilyScreen({ family, onUpdateFamily }: FamilyScreenProps) {
 
               {isFormMode && (
                 <>
-                  <FormField label="Name" value={draftName} onChangeText={setDraftName} theme={theme} placeholder="Full name" />
-                  <FormField
+                  <RFormField label="Name" value={draftName} onChangeText={setDraftName} placeholder="Full name" />
+                  <RFormField
                     label="Relationship"
                     value={draftRelationship}
                     onChangeText={setDraftRelationship}
-                    theme={theme}
                     placeholder="e.g. Mother, Son"
                   />
-                  <FormField
+                  <RFormField
                     label="Home location"
                     value={draftLocation}
                     onChangeText={setDraftLocation}
-                    theme={theme}
                     placeholder="e.g. 12 Smith St, Brunswick"
                   />
 
@@ -451,8 +378,7 @@ export function FamilyScreen({ family, onUpdateFamily }: FamilyScreenProps) {
                   )}
                 </>
               )}
-            </View>
-          </View>
+          </RCenteredOverlay>
         )}
       </SafeAreaView>
     </View>
@@ -524,44 +450,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
   },
-  textInput: {
-    minHeight: 48,
-    borderWidth: 1,
-    fontSize: 16,
-  },
-  panelOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  panel: {
-    width: '100%',
-    maxWidth: 380,
-    maxHeight: '85%',
-    borderWidth: 1,
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-  },
-  panelHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  closeButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   statusBadgeLarge: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: 8,
     borderWidth: 1,
-  },
-  scrim: {
-    backgroundColor: 'rgba(0,0,0,0.35)',
   },
 });
