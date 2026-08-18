@@ -13,14 +13,12 @@ import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { MapScreen } from './src/screens/MapScreen';
+import { FamilyScreen } from './src/screens/FamilyScreen';
 import { RTabBar, TabKey } from './src/components/RTabBar';
+import { INITIAL_FAMILY, FamilyMember } from './src/data/family';
 
 SplashScreen.preventAutoHideAsync();
-const Screens: Record<TabKey, React.ComponentType> = {
-  Home: HomeScreen,
-  Map: MapScreen,
 
-}
 export default function App() {
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -30,7 +28,12 @@ export default function App() {
     Inter_800ExtraBold,
   });
 
-  const [activeTab, setActiveTab] = useState<TabKey>('Home')
+  const [activeTab, setActiveTab] = useState<TabKey>('Home');
+
+  // Single source of truth for the family list — both HomeScreen (read-only
+  // summary) and FamilyScreen (full add/edit/remove/status control) act on
+  // this same state, so they can never drift out of sync with each other.
+  const [family, setFamily] = useState<FamilyMember[]>(INITIAL_FAMILY);
 
   const onLayout = useCallback(async () => {
     if (fontsLoaded) {
@@ -42,13 +45,15 @@ export default function App() {
     return null;
   }
 
-  const ActiveScreen = Screens[activeTab]
-
   return (
     <SafeAreaProvider>
       <View style={{ flex: 1 }} onLayout={onLayout}>
         <View style={{ flex: 1 }}>
-          <ActiveScreen />
+          {activeTab === 'Home' && (
+            <HomeScreen family={family} onSeeAllFamily={() => setActiveTab('Family')} />
+          )}
+          {activeTab === 'Map' && <MapScreen />}
+          {activeTab === 'Family' && <FamilyScreen family={family} onUpdateFamily={setFamily} />}
         </View>
         <RTabBar active={activeTab} onSelect={setActiveTab} />
         <StatusBar style="auto" />

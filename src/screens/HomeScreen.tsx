@@ -1,33 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RButton } from '../components/RButton';
 import { RCard } from '../components/RCard';
 import { RText } from '../components/RText';
 import { SeverityBadge } from '../components/SeverityBadge';
 import { useTheme } from '../theme/useTheme';
+import { FAMILY_STATUS_META, FamilyMember } from '../data/family';
 
-type FamilyStatus = 'safe' | 'checkIn';
-
-interface FamilyMember {
-  id: string;
-  name: string;
-  location: string;
-  status: FamilyStatus;
-  statusLabel: string;
-  updated: string;
+interface HomeScreenProps {
+  family: FamilyMember[];
+  onSeeAllFamily?: () => void;
 }
 
-const FAMILY: FamilyMember[] = [
-  { id: 'mum', name: 'Mum', location: 'Apt 12B · Same building', status: 'safe', statusLabel: 'Safe', updated: '12 min ago' },
-  { id: 'dad', name: 'Dad', location: 'Apt 12B · Same building', status: 'safe', statusLabel: 'Safe', updated: '12 min ago' },
-  { id: 'kai', name: 'Kai (8)', location: 'School · Kew', status: 'checkIn', statusLabel: 'Check in', updated: 'Not replied' },
-  { id: 'husband', name: 'Husband', location: 'Work · Southbank', status: 'safe', statusLabel: 'Safe', updated: '1h ago' },
-];
-
-export function HomeScreen() {
+export function HomeScreen({ family, onSeeAllFamily }: HomeScreenProps) {
   const { colors, severity } = useTheme();
-  const safeCount = FAMILY.filter((m) => m.status === 'safe').length;
+
+  // The self entry is shown/managed on the Family screen, not summarised here.
+  const others = family.filter((m) => !m.isSelf);
+  const safeCount = others.filter((m) => m.status === 'safe').length;
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>
@@ -92,46 +83,46 @@ export function HomeScreen() {
             <RText variant="sectionHeading" color={colors.ink}>
               Family · {safeCount} safe
             </RText>
-            <RText variant="body" color={colors.ink2} accessibilityRole="button">
-              See all
-            </RText>
+            <Pressable onPress={onSeeAllFamily} accessibilityRole="button" accessibilityLabel="See all family members">
+              <RText variant="body" color={colors.ink2}>
+                See all
+              </RText>
+            </Pressable>
           </View>
 
           <RCard padded={false}>
-            {FAMILY.map((member, index) => (
-              <View
-                key={member.id}
-                style={[
-                  styles.familyRow,
-                  index < FAMILY.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.hairline },
-                ]}
-              >
-                <View style={[styles.familyAvatar, { backgroundColor: colors.surface2 }]}>
-                  <RText variant="bodyEmphasis" color={colors.ink2}>
-                    {member.name.charAt(0)}
-                  </RText>
+            {others.map((member, index) => {
+              const meta = FAMILY_STATUS_META[member.status];
+              return (
+                <View
+                  key={member.id}
+                  style={[
+                    styles.familyRow,
+                    index < others.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.hairline },
+                  ]}
+                >
+                  <View style={[styles.familyAvatar, { backgroundColor: colors.surface2 }]}>
+                    <RText variant="bodyEmphasis" color={colors.ink2}>
+                      {member.name.charAt(0)}
+                    </RText>
+                  </View>
+                  <View style={styles.familyInfo}>
+                    <RText variant="bodyEmphasis" color={colors.ink}>
+                      {member.name}
+                    </RText>
+                    <RText variant="secondary" color={colors.ink3}>
+                      {member.location}
+                    </RText>
+                  </View>
+                  <View style={styles.familyStatus}>
+                    <SeverityBadge tone={meta.tone} label={meta.label} icon={meta.icon} size="s" />
+                    <RText variant="caption" color={colors.ink3}>
+                      {member.updated}
+                    </RText>
+                  </View>
                 </View>
-                <View style={styles.familyInfo}>
-                  <RText variant="bodyEmphasis" color={colors.ink}>
-                    {member.name}
-                  </RText>
-                  <RText variant="secondary" color={colors.ink3}>
-                    {member.location}
-                  </RText>
-                </View>
-                <View style={styles.familyStatus}>
-                  <SeverityBadge
-                    tone={member.status === 'safe' ? 'safe' : 'watch'}
-                    label={member.statusLabel}
-                    icon={member.status === 'safe' ? 'checkmark-circle' : 'warning'}
-                    size="s"
-                  />
-                  <RText variant="caption" color={colors.ink3}>
-                    {member.updated}
-                  </RText>
-                </View>
-              </View>
-            ))}
+              );
+            })}
           </RCard>
         </ScrollView>
       </SafeAreaView>
