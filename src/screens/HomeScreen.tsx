@@ -1,5 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Speech from 'expo-speech';
@@ -19,9 +19,10 @@ interface HomeScreenProps {
 }
 
 export function HomeScreen({ family, hazards, onSeeAllFamily }: HomeScreenProps) {
-  const { colors, severity, spacing, radius, sizing } = useTheme();
+  const { colors, severity, spacing, radius, sizing, preferences } = useTheme();
   const [detailOpen, setDetailOpen] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const autoReadHazardIdRef = useRef<string | null>(null);
 
   // The self entry is shown/managed on the Family screen, not summarised here.
   const others = family.filter((m) => !m.isSelf);
@@ -57,6 +58,18 @@ export function HomeScreen({ family, hazards, onSeeAllFamily }: HomeScreenProps)
       onError: () => setIsSpeaking(false),
     });
   };
+
+  // Auto-read the alert aloud when the "Read alerts aloud automatically"
+  // setting is on — fires once per distinct featured hazard (via the ref
+  // guard), not on every re-render or tab revisit.
+  useEffect(() => {
+    if (!preferences.autoReadAlerts) return;
+    if (!featuredHazard) return;
+    if (autoReadHazardIdRef.current === featuredHazard.id) return;
+    autoReadHazardIdRef.current = featuredHazard.id;
+    handleReadAloud();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preferences.autoReadAlerts, featuredHazard?.id]);
 
   const tone = featuredHazard?.severityTone ?? 'advice';
   const hazardStyle = featuredHazard ? HAZARD_STYLES[featuredHazard.type] : null;

@@ -2,6 +2,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -37,6 +38,34 @@ interface MapScreenProps {
   destination?: MapDestination | null;
   onClearDestination?: () => void;
 }
+
+// Standard Google Maps "dark mode" style JSON — only takes effect when the
+// map provider is actually Google (Android by default; iOS uses Apple Maps
+// and ignores this prop entirely, so mapType="mutedStandard" covers dark
+// mode there instead — see the render below).
+const DARK_MAP_STYLE = [
+  { elementType: 'geometry', stylers: [{ color: '#212121' }] },
+  { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#212121' }] },
+  { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#757575' }] },
+  { featureType: 'administrative.country', elementType: 'labels.text.fill', stylers: [{ color: '#9e9e9e' }] },
+  { featureType: 'administrative.land_parcel', stylers: [{ visibility: 'off' }] },
+  { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#bdbdbd' }] },
+  { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
+  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#181818' }] },
+  { featureType: 'poi.park', elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
+  { featureType: 'poi.park', elementType: 'labels.text.stroke', stylers: [{ color: '#1b1b1b' }] },
+  { featureType: 'road', elementType: 'geometry.fill', stylers: [{ color: '#2c2c2c' }] },
+  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#8a8a8a' }] },
+  { featureType: 'road.arterial', elementType: 'geometry', stylers: [{ color: '#373737' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#3c3c3c' }] },
+  { featureType: 'road.highway.controlled_access', elementType: 'geometry', stylers: [{ color: '#4e4e4e' }] },
+  { featureType: 'road.local', elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
+  { featureType: 'transit', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#000000' }] },
+  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#3d3d3d' }] },
+];
 
 interface RouteInfo {
   distanceKm: number;
@@ -108,7 +137,7 @@ function decodePolyline(encoded: string): { latitude: number; longitude: number 
 // ---------------------------------------------------------------------------
 
 export function MapScreen({ hazards, destination, onClearDestination }: MapScreenProps) {
-  const { colors, severity, spacing, radius, sizing } = useTheme();
+  const { colors, severity, spacing, radius, sizing, scheme } = useTheme();
   const { height } = useWindowDimensions();
   const [placeLabel, setPlaceLabel] = useState<string | null>(null);
   const [selectedHazard, setSelectedHazard] = useState<Hazard | null>(null);
@@ -407,7 +436,11 @@ export function MapScreen({ hazards, destination, onClearDestination }: MapScree
               </View>
             </View>
             <View style={[styles.mapContainer, { height: height * 0.75 }]}>
-              <MapView style={styles.map} />
+              <MapView
+                style={styles.map}
+                customMapStyle={scheme === 'dark' ? DARK_MAP_STYLE : []}
+                mapType={Platform.OS === 'c' && scheme === 'dark' ? 'mutedStandard' : 'standard'}
+              />
             </View>
           </ScrollView>
         </SafeAreaView>
@@ -462,6 +495,8 @@ export function MapScreen({ hazards, destination, onClearDestination }: MapScree
               onRegionChangeComplete={setCurrentRegion}
               showsMyLocationButton={false}
               showsUserLocation={false}
+              customMapStyle={scheme === 'dark' ? DARK_MAP_STYLE : []}
+              mapType={Platform.OS === 'ios' && scheme === 'dark' ? 'mutedStandard' : 'standard'}
             >
               <Marker
                 coordinate={{ latitude: region.latitude, longitude: region.longitude }}
@@ -504,14 +539,11 @@ export function MapScreen({ hazards, destination, onClearDestination }: MapScree
                             { latitude: region.latitude, longitude: region.longitude },
                             { latitude: destination.latitude, longitude: destination.longitude },
                           ];
-                    const isRealRoute = routeCoordinates.length > 0;
                     return (
                       <>
-                        <Polyline
-                          coordinates={routePoints}
-                          strokeColor={colors.accent}
-                          strokeWidth={4}
-                        />
+                        {/* White casing underneath so the route reads clearly against busy map detail */}
+                        <Polyline coordinates={routePoints} strokeColor="#FFFFFF" strokeWidth={8} />
+                        <Polyline coordinates={routePoints} strokeColor={colors.accent} strokeWidth={4} />
                       </>
                     );
                   })()}

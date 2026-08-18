@@ -6,7 +6,6 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { useEffect, useRef, useState } from 'react';
 
 const DIR = FileSystem.documentDirectory;
-console.log('[persistence] documentDirectory:', DIR);
 
 async function readJsonFile<T>(filename: string): Promise<T | null> {
   if (!DIR) {
@@ -16,10 +15,8 @@ async function readJsonFile<T>(filename: string): Promise<T | null> {
   try {
     const path = `${DIR}${filename}`;
     const info = await FileSystem.getInfoAsync(path);
-    console.log(`[persistence] read ${filename} — exists:`, info.exists, 'path:', path);
     if (!info.exists) return null;
     const contents = await FileSystem.readAsStringAsync(path);
-    console.log(`[persistence] read ${filename} — contents length:`, contents.length);
     return JSON.parse(contents) as T;
   } catch (err) {
     console.error(`[persistence] failed to read ${filename}:`, err);
@@ -32,7 +29,6 @@ async function writeJsonFile<T>(filename: string, data: T): Promise<void> {
   try {
     const path = `${DIR}${filename}`;
     await FileSystem.writeAsStringAsync(path, JSON.stringify(data, null, 2));
-    console.log(`[persistence] wrote ${filename} — path:`, path);
   } catch (err) {
     console.error(`[persistence] failed to write ${filename}:`, err);
   }
