@@ -158,7 +158,7 @@ export function FamilyScreen({ family, onUpdateFamily }: FamilyScreenProps) {
     setDraftName('');
     setDraftRelationship('');
     setDraftLocation('');
-    setDraftStatus('checkIn');
+    setDraftStatus('safe');
     setPanel({ mode: 'add', member: null });
   };
 
@@ -411,19 +411,21 @@ export function FamilyScreen({ family, onUpdateFamily }: FamilyScreenProps) {
                     placeholder="e.g. Mother, Son"
                   />
                   <FormField
-                    label="Location"
+                    label="Home location"
                     value={draftLocation}
                     onChangeText={setDraftLocation}
                     theme={theme}
-                    placeholder="e.g. Home, Work, School"
+                    placeholder="e.g. 12 Smith St, Brunswick"
                   />
 
-                  <View style={{ gap: spacing.scale[2] }}>
-                    <RText variant="caption" color={colors.ink3}>
-                      Status
-                    </RText>
-                    <StatusSelector value={draftStatus} onChange={setDraftStatus} theme={theme} />
-                  </View>
+                  {panel.mode === 'edit' && (
+                    <View style={{ gap: spacing.scale[2] }}>
+                      <RText variant="caption" color={colors.ink3}>
+                        Status
+                      </RText>
+                      <StatusSelector value={draftStatus} onChange={setDraftStatus} theme={theme} />
+                    </View>
+                  )}
 
                   <RButton
                     label={panel.mode === 'add' ? 'Add member' : 'Save changes'}

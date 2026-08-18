@@ -1,24 +1,64 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Speech from 'expo-speech';
 import { RButton } from '../components/RButton';
 import { RCard } from '../components/RCard';
 import { RText } from '../components/RText';
 import { SeverityBadge } from '../components/SeverityBadge';
 import { useTheme } from '../theme/useTheme';
 import { FAMILY_STATUS_META, FamilyMember } from '../data/family';
+import { Hazard, HAZARD_STYLES, toRgba } from '../data/hazards';
 
 interface HomeScreenProps {
   family: FamilyMember[];
+  hazards: Hazard[];
   onSeeAllFamily?: () => void;
 }
 
-export function HomeScreen({ family, onSeeAllFamily }: HomeScreenProps) {
-  const { colors, severity } = useTheme();
+export function HomeScreen({ family, hazards, onSeeAllFamily }: HomeScreenProps) {
+  const { colors, severity, spacing, radius, sizing } = useTheme();
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   // The self entry is shown/managed on the Family screen, not summarised here.
   const others = family.filter((m) => !m.isSelf);
   const safeCount = others.filter((m) => m.status === 'safe').length;
+
+  // The hazard flagged `featured` drives the Home screen's alert card — set
+  // on at most one hazard in the app-level hazards list.
+  const featuredHazard = hazards.find((h) => h.featured) ?? null;
+
+  // Stop any in-progress speech if the screen unmounts (e.g. user switches tabs)
+  useEffect(() => {
+    return () => {
+      Speech.stop();
+    };
+  }, []);
+
+  const handleReadAloud = () => {
+    if (isSpeaking) {
+      Speech.stop();
+      setIsSpeaking(false);
+      return;
+    }
+    if (!featuredHazard) return;
+
+    const utterance = [featuredHazard.headline ?? featuredHazard.description, featuredHazard.description]
+      .filter((part, index, arr) => arr.indexOf(part) === index) // drop an exact duplicate if headline === description
+      .join('. ');
+
+    setIsSpeaking(true);
+    Speech.speak(utterance, {
+      onDone: () => setIsSpeaking(false),
+      onStopped: () => setIsSpeaking(false),
+      onError: () => setIsSpeaking(false),
+    });
+  };
+
+  const tone = featuredHazard?.severityTone ?? 'advice';
+  const hazardStyle = featuredHazard ? HAZARD_STYLES[featuredHazard.type] : null;
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>
@@ -47,37 +87,61 @@ export function HomeScreen({ family, onSeeAllFamily }: HomeScreenProps) {
             </View>
           </View>
 
-          <RCard
-            style={[styles.alertCard, { borderLeftColor: severity.advice.border, borderLeftWidth: 6 }]}
-            accessibilityRole="alert"
-            accessibilityLabel="Advice alert. Thunderstorm moving in from the west. Updated 2 minutes ago."
-          >
-            <View style={styles.alertHeaderRow}>
-              <SeverityBadge tone="advice" label="ADVICE" icon="information-circle" pill={false} />
-              <View style={styles.updatedRow}>
-                <Ionicons name="time-outline" size={14} color={colors.ink3} />
-                <RText variant="caption" color={colors.ink3}>
-                  Updated 2 min ago
-                </RText>
+          {featuredHazard ? (
+            <RCard
+              style={[styles.alertCard, { borderLeftColor: severity[tone].border, borderLeftWidth: 6 }]}
+              accessibilityRole="alert"
+              accessibilityLabel={`${tone} alert. ${featuredHazard.headline ?? featuredHazard.description}${
+                featuredHazard.updated ? ` Updated ${featuredHazard.updated}.` : ''
+              }`}
+            >
+              <View style={styles.alertHeaderRow}>
+                <SeverityBadge tone={tone} label={tone.toUpperCase()} icon="information-circle" pill={false} />
+                {featuredHazard.updated && (
+                  <View style={styles.updatedRow}>
+                    <Ionicons name="time-outline" size={14} color={colors.ink3} />
+                    <RText variant="caption" color={colors.ink3}>
+                      Updated {featuredHazard.updated}
+                    </RText>
+                  </View>
+                )}
               </View>
-            </View>
 
-            <RText variant="heroHeadline" color={colors.ink} style={styles.alertHeadline} accessibilityRole="header">
-              Thunderstorm moving in from the west.
-            </RText>
+              <RText variant="heroHeadline" color={colors.ink} style={styles.alertHeadline} accessibilityRole="header">
+                {featuredHazard.headline ?? featuredHazard.description}
+              </RText>
 
-            <View style={styles.alertActions}>
-              <RButton label="Read details" variant="primary" size="m" icon="chevron-forward" />
-              <RButton
-                label="Read aloud"
-                variant="secondary"
-                size="m"
-                icon="volume-high-outline"
-                iconPosition="leading"
-                accessibilityHint="Reads this alert aloud"
-              />
-            </View>
-          </RCard>
+              <View style={styles.alertActions}>
+                <RButton
+                  label="Read details"
+                  variant="primary"
+                  size="m"
+                  icon="chevron-forward"
+                  onPress={() => setDetailOpen(true)}
+                />
+                <RButton
+                  label={isSpeaking ? 'Stop reading' : 'Read aloud'}
+                  variant="secondary"
+                  size="m"
+                  icon={isSpeaking ? 'stop-circle-outline' : 'volume-high-outline'}
+                  iconPosition="leading"
+                  onPress={handleReadAloud}
+                  accessibilityHint={isSpeaking ? 'Stops reading this alert aloud' : 'Reads this alert aloud'}
+                />
+              </View>
+            </RCard>
+          ) : (
+            <RCard
+              style={[styles.alertCard, { borderLeftColor: severity.safe.border, borderLeftWidth: 6 }]}
+              accessibilityRole="alert"
+              accessibilityLabel="All clear. No active alerts for your area."
+            >
+              <SeverityBadge tone="safe" label="ALL CLEAR" icon="checkmark-circle" pill={false} />
+              <RText variant="heroHeadline" color={colors.ink} style={styles.alertHeadline} accessibilityRole="header">
+                No active alerts for your area.
+              </RText>
+            </RCard>
+          )}
 
           <View style={styles.sectionHeaderRow}>
             <RText variant="sectionHeading" color={colors.ink}>
@@ -125,6 +189,95 @@ export function HomeScreen({ family, onSeeAllFamily }: HomeScreenProps) {
             })}
           </RCard>
         </ScrollView>
+
+        {/* Hazard detail overlay — same centered scrim pattern used on Map/Family screens */}
+        {detailOpen && featuredHazard && hazardStyle && (
+          <View style={styles.panelOverlay} pointerEvents="box-none">
+            <Pressable
+              style={StyleSheet.absoluteFillObject}
+              onPress={() => setDetailOpen(false)}
+              accessibilityLabel="Dismiss hazard details"
+            >
+              <View style={[StyleSheet.absoluteFillObject, styles.scrim]} />
+            </Pressable>
+
+            <View
+              style={[
+                styles.panel,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.hairline,
+                  borderRadius: radius.card,
+                  padding: spacing.cardPadding,
+                  gap: spacing.scale[4],
+                },
+              ]}
+            >
+              <View style={styles.panelHeader}>
+                <View style={[styles.panelTitleRow, { gap: spacing.scale[3] }]}>
+                  <View
+                    style={[
+                      styles.panelIcon,
+                      {
+                        width: sizing.icon.hero,
+                        height: sizing.icon.hero,
+                        borderRadius: sizing.icon.hero / 2,
+                        backgroundColor: toRgba(hazardStyle.theme, 1),
+                      },
+                    ]}
+                  >
+                    <MaterialCommunityIcons name={hazardStyle.icon} size={sizing.icon.small} color="white" />
+                  </View>
+                  <RText variant="bodyEmphasis" color={colors.ink}>
+                    {featuredHazard.type}
+                  </RText>
+                </View>
+                <Pressable
+                  style={[
+                    styles.closeButton,
+                    { width: sizing.touchTarget.preferredPrimary, height: sizing.touchTarget.preferredPrimary },
+                  ]}
+                  onPress={() => setDetailOpen(false)}
+                  accessibilityLabel="Close"
+                >
+                  <Ionicons name="close" size={sizing.icon.medium} color={colors.ink3} />
+                </Pressable>
+              </View>
+
+              <View
+                style={[
+                  styles.statusBadge,
+                  {
+                    borderRadius: radius.pill,
+                    paddingHorizontal: spacing.scale[4],
+                    paddingVertical: spacing.scale[1],
+                    backgroundColor: severity[tone].bg,
+                    borderColor: severity[tone].border,
+                  },
+                ]}
+              >
+                <RText variant="caption" color={severity[tone].fg}>
+                  {tone.toUpperCase()}
+                </RText>
+              </View>
+
+              <RText variant="body" color={colors.ink2}>
+                {featuredHazard.description}
+              </RText>
+
+              <View style={{ gap: spacing.scale[1] }}>
+                <RText variant="caption" color={colors.ink3}>
+                  Effect radius: {(featuredHazard.effectRadius / 1000).toFixed(1)} km
+                </RText>
+                {featuredHazard.updated && (
+                  <RText variant="caption" color={colors.ink3}>
+                    Updated {featuredHazard.updated}
+                  </RText>
+                )}
+              </View>
+            </View>
+          </View>
+        )}
       </SafeAreaView>
     </View>
   );
@@ -210,5 +363,45 @@ const styles = StyleSheet.create({
   familyStatus: {
     alignItems: 'flex-end',
     gap: 4,
+  },
+  panelOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  panel: {
+    width: '100%',
+    maxWidth: 380,
+    maxHeight: '85%',
+    borderWidth: 1,
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+  },
+  panelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  panelTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  panelIcon: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusBadge: {
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+  },
+  closeButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scrim: {
+    backgroundColor: 'rgba(0,0,0,0.35)',
   },
 });

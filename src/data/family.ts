@@ -4,11 +4,7 @@ import type { SeverityTone } from '../theme/tokens';
 // ---------------------------------------------------------------------------
 // Family data model
 // ---------------------------------------------------------------------------
-// Lives here (not in App.tsx directly) to avoid a circular import: App.tsx
-// renders HomeScreen/FamilyScreen, and both of those need these types/values,
-// so the shared definitions live in their own module. App.tsx still owns the
-// live state (via useState), sourced from INITIAL_FAMILY below — this file
-// only holds the shape and the starting seed data.
+
 
 export type FamilyStatus = 'safe' | 'checkIn' | 'help';
 

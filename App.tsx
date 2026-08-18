@@ -16,6 +16,7 @@ import { MapScreen } from './src/screens/MapScreen';
 import { FamilyScreen } from './src/screens/FamilyScreen';
 import { RTabBar, TabKey } from './src/components/RTabBar';
 import { INITIAL_FAMILY, FamilyMember } from './src/data/family';
+import { INITIAL_HAZARDS, Hazard } from './src/data/hazards';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -35,6 +36,10 @@ export default function App() {
   // this same state, so they can never drift out of sync with each other.
   const [family, setFamily] = useState<FamilyMember[]>(INITIAL_FAMILY);
 
+  // Same pattern for hazards — MapScreen (full map display) and HomeScreen
+  // (featured alert card) both read from this single app-level list.
+  const [hazards, setHazards] = useState<Hazard[]>(INITIAL_HAZARDS);
+
   const onLayout = useCallback(async () => {
     if (fontsLoaded) {
       await SplashScreen.hideAsync();
@@ -50,9 +55,9 @@ export default function App() {
       <View style={{ flex: 1 }} onLayout={onLayout}>
         <View style={{ flex: 1 }}>
           {activeTab === 'Home' && (
-            <HomeScreen family={family} onSeeAllFamily={() => setActiveTab('Family')} />
+            <HomeScreen family={family} hazards={hazards} onSeeAllFamily={() => setActiveTab('Family')} />
           )}
-          {activeTab === 'Map' && <MapScreen />}
+          {activeTab === 'Map' && <MapScreen hazards={hazards} />}
           {activeTab === 'Family' && <FamilyScreen family={family} onUpdateFamily={setFamily} />}
         </View>
         <RTabBar active={activeTab} onSelect={setActiveTab} />
