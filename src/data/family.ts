@@ -29,14 +29,7 @@ export const FAMILY_STATUS_META: Record<
   help: { label: 'Needs help', icon: 'alert-circle', tone: 'emergency' },
 };
 
-export const SELECTABLE_FAMILY_STATUSES: Record<
-  FamilyStatus,
-  { label: string; icon: keyof typeof Ionicons.glyphMap; tone: SeverityTone }
-> = {
-  safe: { label: 'Safe', icon: 'checkmark-circle', tone: 'safe' },
-  evacuating: {label: 'Moving to safety',icon: 'walk', tone: 'advice'},
-  help: { label: 'Needs help', icon: 'alert-circle', tone: 'emergency' },
-};
+export const SELECTABLE_FAMILY_STATUSES: FamilyStatus[] = ['safe', 'evacuating', 'help'];
 
 export const INITIAL_FAMILY: FamilyMember[] = [
   {
