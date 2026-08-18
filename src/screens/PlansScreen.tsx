@@ -27,6 +27,10 @@ interface PlansScreenProps {
   safeLocations: SafeLocation[];
   onUpdateSafeLocations: (locations: SafeLocation[]) => void;
   onNavigateToLocation: (destination: MapDestination) => void;
+  /** Set by App.tsx when the user tapped "View plan" on Home/Map for a
+   * specific hazard — opens that plan's detail view automatically on arrival. */
+  initialPlanId?: string | null;
+  onInitialPlanHandled?: () => void;
 }
 
 // Same key used for Directions in MapScreen — also needs the Places API
@@ -167,6 +171,8 @@ export function PlansScreen({
   safeLocations,
   onUpdateSafeLocations,
   onNavigateToLocation,
+  initialPlanId,
+  onInitialPlanHandled,
 }: PlansScreenProps) {
   const theme = useTheme();
   const { colors, spacing, radius, sizing } = theme;
@@ -381,6 +387,18 @@ export function PlansScreen({
     setPlanMode('view');
     setActiveOverlay('plan');
   };
+
+  // Arriving here from a "View plan" tap on Home/Map — open that specific
+  // plan immediately rather than leaving the user to find it in the list.
+  useEffect(() => {
+    if (!initialPlanId) return;
+    const plan = plans.find((p) => p.id === initialPlanId);
+    if (plan) {
+      openViewPlan(plan);
+    }
+    onInitialPlanHandled?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPlanId]);
 
   const openEditPlan = (plan: EvacuationPlan) => {
     setSelectedPlan(plan);

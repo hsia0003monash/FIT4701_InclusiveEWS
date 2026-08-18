@@ -69,6 +69,15 @@ export interface MapDestination {
   name: string;
 }
 
+/**
+ * Finds the plan matching a given hazard type, falling back to the General
+ * plan if that specific type doesn't have its own. Used to link an active
+ * hazard on Home/Map directly to its response plan.
+ */
+export function resolvePlanForHazardType(plans: EvacuationPlan[], hazardType: PlanHazardType): EvacuationPlan | null {
+  return plans.find((p) => p.hazardType === hazardType) ?? plans.find((p) => p.hazardType === 'General') ?? null;
+}
+
 export const INITIAL_PLANS: EvacuationPlan[] = [
   {
     id: 'plan-general',

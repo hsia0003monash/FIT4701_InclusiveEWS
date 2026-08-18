@@ -11,14 +11,18 @@ import { SeverityBadge } from '../components/SeverityBadge';
 import { useTheme } from '../theme/useTheme';
 import { FAMILY_STATUS_META, FamilyMember } from '../data/family';
 import { Hazard, HAZARD_STYLES, toRgba } from '../data/hazards';
+import type { EvacuationPlan } from '../data/plans';
+import { resolvePlanForHazardType } from '../data/plans';
 
 interface HomeScreenProps {
   family: FamilyMember[];
   hazards: Hazard[];
+  plans: EvacuationPlan[];
   onSeeAllFamily?: () => void;
+  onViewPlanForHazard: (hazard: Hazard) => void;
 }
 
-export function HomeScreen({ family, hazards, onSeeAllFamily }: HomeScreenProps) {
+export function HomeScreen({ family, hazards, plans, onSeeAllFamily, onViewPlanForHazard }: HomeScreenProps) {
   const { colors, severity, spacing, radius, sizing, preferences } = useTheme();
   const [detailOpen, setDetailOpen] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -142,6 +146,16 @@ export function HomeScreen({ family, hazards, onSeeAllFamily }: HomeScreenProps)
                   onPress={handleReadAloud}
                   accessibilityHint={isSpeaking ? 'Stops reading this alert aloud' : 'Reads this alert aloud'}
                 />
+                {resolvePlanForHazardType(plans, featuredHazard.type) && (
+                  <RButton
+                    label="View plan"
+                    variant="secondary"
+                    size="m"
+                    icon="document-text-outline"
+                    iconPosition="leading"
+                    onPress={() => onViewPlanForHazard(featuredHazard)}
+                  />
+                )}
               </View>
             </RCard>
           ) : (

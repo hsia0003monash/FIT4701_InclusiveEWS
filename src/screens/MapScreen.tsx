@@ -13,15 +13,24 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import MapView, { Circle, Marker, Polyline } from 'react-native-maps';
 
+import { RButton } from '../components/RButton';
 import { RCenteredOverlay } from '../components/RCenteredOverlay';
 import { RText } from '../components/RText';
 import { useTheme } from '../theme/useTheme';
 import { Hazard, HazardType, HAZARD_STYLES, toRgba } from '../data/hazards';
-import type { MapDestination } from '../data/plans';
+import type { EvacuationPlan, MapDestination } from '../data/plans';
+import { resolvePlanForHazardType } from '../data/plans';
 
 // Set in .env — see .env.example. Falls back to a straight-line preview
 // (no real routing) when unset, so the app still works without a key.
 const GOOGLE_DIRECTIONS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY;
+
+// Used for every active hazard when "Simple map" is enabled — a single,
+// unambiguous "something is wrong here" treatment instead of distinguishing
+// by type, for anyone who finds a multi-colour/icon legend more confusing
+// than helpful.
+const SIMPLE_HAZARD_THEME = { r: 196, g: 0, b: 0, a: 1 };
+const SIMPLE_HAZARD_ICON: keyof typeof MaterialCommunityIcons.glyphMap = 'alert';
 
 // ---------------------------------------------------------------------------
 // Layout constants
@@ -32,6 +41,8 @@ const BASE_BOTTOM = 25;
 
 interface MapScreenProps {
   hazards: Hazard[];
+  plans: EvacuationPlan[];
+  onViewPlanForHazard: (hazard: Hazard) => void;
   /** Set when the user taps "Show directions" on a plan. Draws a real
    * road-following route via a single Google Directions API request when
    * EXPO_PUBLIC_GOOGLE_MAPS_KEY is set, or a straight-line preview otherwise. */
@@ -41,6 +52,16 @@ interface MapScreenProps {
 
 // Standard Google Maps "dark mode" style JSON — only takes effect when the
 // map provider is actually Google (Android by default; iOS uses Apple Maps
+// Turns off the native POI/transit icon layer baked into the Google Maps
+// basemap — those icons (shops, parks, stations) are independently tappable
+// and can trigger the OS's own "open in Google Maps" prompt if a hazard
+// marker happens to sit near one, unrelated to anything this app renders.
+// Applied in both light and dark mode, not just dark.
+const BASE_MAP_STYLE = [
+  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+];
+
 // and ignores this prop entirely, so mapType="mutedStandard" covers dark
 // mode there instead — see the render below).
 const DARK_MAP_STYLE = [
@@ -136,8 +157,8 @@ function decodePolyline(encoded: string): { latitude: number; longitude: number 
 // Component
 // ---------------------------------------------------------------------------
 
-export function MapScreen({ hazards, destination, onClearDestination }: MapScreenProps) {
-  const { colors, severity, spacing, radius, sizing, scheme } = useTheme();
+export function MapScreen({ hazards, plans, onViewPlanForHazard, destination, onClearDestination }: MapScreenProps) {
+  const { colors, severity, spacing, radius, sizing, scheme, preferences } = useTheme();
   const { height } = useWindowDimensions();
   const [placeLabel, setPlaceLabel] = useState<string | null>(null);
   const [selectedHazard, setSelectedHazard] = useState<Hazard | null>(null);
@@ -438,8 +459,9 @@ export function MapScreen({ hazards, destination, onClearDestination }: MapScree
             <View style={[styles.mapContainer, { height: height * 0.75 }]}>
               <MapView
                 style={styles.map}
-                customMapStyle={scheme === 'dark' ? DARK_MAP_STYLE : []}
-                mapType={Platform.OS === 'c' && scheme === 'dark' ? 'mutedStandard' : 'standard'}
+                customMapStyle={scheme === 'dark' ? [...BASE_MAP_STYLE, ...DARK_MAP_STYLE] : BASE_MAP_STYLE}
+                mapType={Platform.OS === 'ios' && scheme === 'dark' ? 'mutedStandard' : 'standard'}
+                showsPointsOfInterest={false}
               />
             </View>
           </ScrollView>
@@ -495,8 +517,9 @@ export function MapScreen({ hazards, destination, onClearDestination }: MapScree
               onRegionChangeComplete={setCurrentRegion}
               showsMyLocationButton={false}
               showsUserLocation={false}
-              customMapStyle={scheme === 'dark' ? DARK_MAP_STYLE : []}
+              customMapStyle={scheme === 'dark' ? [...BASE_MAP_STYLE, ...DARK_MAP_STYLE] : BASE_MAP_STYLE}
               mapType={Platform.OS === 'ios' && scheme === 'dark' ? 'mutedStandard' : 'standard'}
+              showsPointsOfInterest={false}
             >
               <Marker
                 coordinate={{ latitude: region.latitude, longitude: region.longitude }}
@@ -557,14 +580,18 @@ export function MapScreen({ hazards, destination, onClearDestination }: MapScree
 
               {activeHazards.map((hazard) => {
                 const style = HAZARD_STYLES[hazard.type];
+                // Simple map: every hazard looks the same at a glance —
+                // still identified precisely once opened via the detail panel.
+                const displayTheme = preferences.simpleMap ? SIMPLE_HAZARD_THEME : style.theme;
+                const displayIcon = preferences.simpleMap ? SIMPLE_HAZARD_ICON : style.icon;
                 return (
                   <Fragment key={hazard.id}>
                     <Circle
                       center={{ latitude: hazard.lat, longitude: hazard.long }}
                       radius={hazard.effectRadius}
-                      strokeColor={toRgba(style.theme, 0.8)}
-                      fillColor={toRgba(style.theme, 0.15)}
-                      strokeWidth={2}
+                      strokeColor={toRgba(displayTheme, 0.9)}
+                      fillColor={toRgba(displayTheme, 0.18)}
+                      strokeWidth={4}
                     />
                     <Marker
                       coordinate={{ latitude: hazard.lat, longitude: hazard.long }}
@@ -578,11 +605,11 @@ export function MapScreen({ hazards, destination, onClearDestination }: MapScree
                             width: sizing.avatar.large,
                             height: sizing.avatar.large,
                             borderRadius: sizing.avatar.large / 2,
-                            backgroundColor: toRgba(style.theme, 1),
+                            backgroundColor: toRgba(displayTheme, 1),
                           },
                         ]}
                       >
-                        <MaterialCommunityIcons name={style.icon} size={sizing.icon.large} color="white" />
+                        <MaterialCommunityIcons name={displayIcon} size={sizing.icon.large} color="white" />
                       </View>
                     </Marker>
                   </Fragment>
@@ -758,8 +785,8 @@ export function MapScreen({ hazards, destination, onClearDestination }: MapScree
               </RCenteredOverlay>
             )}
 
-            {/* Hazard legend overlay */}
-            {legendOpen && (
+            {/* Hazard legend overlay — no legend needed in simple map mode, since every hazard looks the same */}
+            {legendOpen && !preferences.simpleMap && (
               <RCenteredOverlay title="Hazard types" onDismiss={() => setLegendOpen(false)} maxWidth={340}>
                 <ScrollView style={styles.legendScroll} showsVerticalScrollIndicator={false}>
                   {(Object.keys(HAZARD_STYLES) as HazardType[]).map((type) => {
@@ -825,26 +852,42 @@ export function MapScreen({ hazards, destination, onClearDestination }: MapScree
                 <RText variant="body" color={colors.ink2}>
                   {selectedHazard.description}
                 </RText>
+
+                {resolvePlanForHazardType(plans, selectedHazard.type) && (
+                  <RButton
+                    label="View response plan"
+                    variant="primary"
+                    size="m"
+                    icon="document-text-outline"
+                    iconPosition="leading"
+                    onPress={() => {
+                      onViewPlanForHazard(selectedHazard);
+                      setSelectedHazard(null);
+                    }}
+                  />
+                )}
               </RCenteredOverlay>
             )}
 
             {/* Centralized control cluster — legend, zoom out/in, locate */}
             <View style={styles.controlCluster}>
-              <Pressable
-                style={[
-                  styles.controlButton,
-                  {
-                    width: sizing.touchTarget.preferredPrimary,
-                    height: sizing.touchTarget.preferredPrimary,
-                    borderRadius: sizing.touchTarget.preferredPrimary / 2,
-                    backgroundColor: colors.surface,
-                  },
-                ]}
-                onPress={toggleLegend}
-                accessibilityLabel={legendOpen ? 'Hide hazard legend' : 'Show hazard legend'}
-              >
-                <Ionicons name="list" size={24} color={colors.ink} />
-              </Pressable>
+              {!preferences.simpleMap && (
+                <Pressable
+                  style={[
+                    styles.controlButton,
+                    {
+                      width: sizing.touchTarget.preferredPrimary,
+                      height: sizing.touchTarget.preferredPrimary,
+                      borderRadius: sizing.touchTarget.preferredPrimary / 2,
+                      backgroundColor: colors.surface,
+                    },
+                  ]}
+                  onPress={toggleLegend}
+                  accessibilityLabel={legendOpen ? 'Hide hazard legend' : 'Show hazard legend'}
+                >
+                  <Ionicons name="list" size={24} color={colors.ink} />
+                </Pressable>
+              )}
               <Pressable
                 style={[
                   styles.controlButton,
@@ -1048,7 +1091,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   legendScroll: {
-    flexGrow: 0,
+    maxHeight: 420,
   },
   legendRow: {
     flexDirection: 'row',

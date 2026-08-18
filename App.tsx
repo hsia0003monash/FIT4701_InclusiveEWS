@@ -22,7 +22,14 @@ import { useTheme } from './src/theme/useTheme';
 import { usePersistentState } from './src/data/persistence';
 import { INITIAL_FAMILY, FamilyMember } from './src/data/family';
 import { INITIAL_HAZARDS, Hazard } from './src/data/hazards';
-import { INITIAL_PLANS, INITIAL_SAFE_LOCATIONS, EvacuationPlan, SafeLocation, MapDestination } from './src/data/plans';
+import {
+  INITIAL_PLANS,
+  INITIAL_SAFE_LOCATIONS,
+  EvacuationPlan,
+  SafeLocation,
+  MapDestination,
+  resolvePlanForHazardType,
+} from './src/data/plans';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -73,6 +80,19 @@ export default function App() {
     setActiveTab('Map');
   };
 
+  // Set when the user taps "View plan" for a hazard on Home/Map — switches
+  // to the Plans tab and opens the matching plan (or the General fallback)
+  // directly, rather than leaving the user to find it in the list themselves.
+  const [targetPlanId, setTargetPlanId] = useState<string | null>(null);
+
+  const handleViewPlanForHazard = (hazard: Hazard) => {
+    const plan = resolvePlanForHazardType(plans, hazard.type);
+    if (plan) {
+      setTargetPlanId(plan.id);
+      setActiveTab('Plans');
+    }
+  };
+
   const onLayout = useCallback(async () => {
     if (fontsLoaded && dataLoaded) {
       await SplashScreen.hideAsync();
@@ -89,10 +109,22 @@ export default function App() {
         <View style={{ flex: 1 }} onLayout={onLayout}>
           <View style={{ flex: 1 }}>
             {activeTab === 'Home' && (
-              <HomeScreen family={family} hazards={hazards} onSeeAllFamily={() => setActiveTab('Family')} />
+              <HomeScreen
+                family={family}
+                hazards={hazards}
+                plans={plans}
+                onSeeAllFamily={() => setActiveTab('Family')}
+                onViewPlanForHazard={handleViewPlanForHazard}
+              />
             )}
             {activeTab === 'Map' && (
-              <MapScreen hazards={hazards} destination={mapDestination} onClearDestination={() => setMapDestination(null)} />
+              <MapScreen
+                hazards={hazards}
+                plans={plans}
+                onViewPlanForHazard={handleViewPlanForHazard}
+                destination={mapDestination}
+                onClearDestination={() => setMapDestination(null)}
+              />
             )}
             {activeTab === 'Family' && <FamilyScreen family={family} onUpdateFamily={setFamily} />}
             {activeTab === 'Plans' && (
@@ -102,6 +134,8 @@ export default function App() {
                 safeLocations={safeLocations}
                 onUpdateSafeLocations={setSafeLocations}
                 onNavigateToLocation={handleNavigateToLocation}
+                initialPlanId={targetPlanId}
+                onInitialPlanHandled={() => setTargetPlanId(null)}
               />
             )}
             {activeTab === 'Settings' && (

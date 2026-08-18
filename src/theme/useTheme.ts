@@ -19,7 +19,7 @@ export function useTheme() {
   const baseColors = color[scheme];
   const colors = preferences.highContrast ? { ...baseColors, ...color.highContrastOverrides[scheme] } : baseColors;
 
-  const severity = color.severity[scheme];
+  const severity = preferences.highContrast ? color.severityHighContrast[scheme] : color.severity[scheme];
 
   const scaleFactor = TEXT_SCALE_FACTORS[preferences.textScale];
   const typography =

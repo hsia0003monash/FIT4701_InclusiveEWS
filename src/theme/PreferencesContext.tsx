@@ -9,6 +9,10 @@ export interface Preferences {
   highContrast: boolean;
   textScale: TextScale;
   autoReadAlerts: boolean;
+  /** Renders every active hazard on the map identically (one colour, one
+   * icon) instead of distinguishing by type — for anyone who finds a
+   * multi-type legend more confusing than helpful. */
+  simpleMap: boolean;
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -16,6 +20,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   highContrast: false,
   textScale: 'standard',
   autoReadAlerts: false,
+  simpleMap: false,
 };
 
 interface PreferencesContextValue {

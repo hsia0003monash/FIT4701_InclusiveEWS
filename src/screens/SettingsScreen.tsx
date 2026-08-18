@@ -228,6 +228,19 @@ export function SettingsScreen({ onResetFamily, onResetPlans, onResetSafeLocatio
 
           <RCard style={{ gap: spacing.scale[4] }}>
             <RText variant="sectionHeading" color={colors.ink}>
+              Map
+            </RText>
+            <ToggleRow
+              label="Simple map"
+              description="Shows every active hazard the same way, instead of a different colour and icon per type"
+              value={preferences.simpleMap}
+              onChange={(simpleMap) => updatePreferences({ simpleMap })}
+              theme={theme}
+            />
+          </RCard>
+
+          <RCard style={{ gap: spacing.scale[4] }}>
+            <RText variant="sectionHeading" color={colors.ink}>
               Alerts & voice
             </RText>
 

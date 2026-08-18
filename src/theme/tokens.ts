@@ -1,6 +1,3 @@
-// Design tokens transcribed from EWS-design-system.json — keep this as the single
-// source of truth for color/type/spacing so screens never hardcode values.
-
 export const typography = {
   weights: { regular: '400', medium: '500', semibold: '600', bold: '700', heavy: '700', black: '800' } as const,
   scale: {
@@ -66,14 +63,42 @@ const severityDark = {
   safe: { fg: '#9FD8B0', bg: '#12301F', border: '#2C5A3E' },
 };
 
+// Higher-contrast severity variants — stronger saturation and a wider
+// fg/bg contrast ratio than the default severity palette above. Used when
+// the user enables High contrast in Settings, since the default severity
+// colors (soft tinted backgrounds) don't meet the same contrast bar as the
+// rest of high-contrast mode otherwise does.
+const severityHighContrastLight = {
+  advice: { fg: '#FFFFFF', bg: '#0B3D91', border: '#0B3D91' },
+  watch: { fg: '#000000', bg: '#FFB300', border: '#7A4B00' },
+  emergency: { fg: '#FFFFFF', bg: '#C40000', border: '#7A0000' },
+  safe: { fg: '#FFFFFF', bg: '#067A3D', border: '#04532A' },
+};
+
+const severityHighContrastDark = {
+  advice: { fg: '#000000', bg: '#6FA8FF', border: '#FFFFFF' },
+  watch: { fg: '#000000', bg: '#FFC94D', border: '#FFFFFF' },
+  emergency: { fg: '#FFFFFF', bg: '#FF4040', border: '#FFFFFF' },
+  safe: { fg: '#000000', bg: '#4CD787', border: '#FFFFFF' },
+};
+
 export const color = {
   light: lightColor,
   dark: darkColor,
   highContrastOverrides: {
-    light: { bg: '#FFFFFF', surface: '#FFFFFF', ink: '#000000', ink2: '#000000', hairline: 'rgba(0,0,0,0.5)' },
-    dark: { bg: '#000000', surface: '#000000', ink: '#FFFFFF', ink2: '#FFFFFF', hairline: 'rgba(255,255,255,0.6)' },
+    light: {
+      bg: '#FFFFFF', surface: '#FFFFFF', surface2: '#E0E0E0',
+      ink: '#000000', ink2: '#000000', ink3: '#000000',
+      hairline: 'rgba(0,0,0,0.6)', accent: '#0B3D91',
+    },
+    dark: {
+      bg: '#000000', surface: '#000000', surface2: '#1A1A1A',
+      ink: '#FFFFFF', ink2: '#FFFFFF', ink3: '#FFFFFF',
+      hairline: 'rgba(255,255,255,0.7)', accent: '#6FA8FF',
+    },
   },
   severity: { light: severityLight, dark: severityDark },
+  severityHighContrast: { light: severityHighContrastLight, dark: severityHighContrastDark },
 };
 
 export type SeverityTone = keyof typeof severityLight;
