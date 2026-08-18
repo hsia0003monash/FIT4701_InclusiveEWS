@@ -16,6 +16,7 @@ import { MapScreen } from './src/screens/MapScreen';
 import { FamilyScreen } from './src/screens/FamilyScreen';
 import { PlansScreen } from './src/screens/PlansScreen';
 import { RTabBar, TabKey } from './src/components/RTabBar';
+import { usePersistentState } from './src/data/persistence';
 import { INITIAL_FAMILY, FamilyMember } from './src/data/family';
 import { INITIAL_HAZARDS, Hazard } from './src/data/hazards';
 import { INITIAL_PLANS, INITIAL_SAFE_LOCATIONS, EvacuationPlan, SafeLocation, MapDestination } from './src/data/plans';
@@ -33,19 +34,19 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<TabKey>('Home');
 
-  // Single source of truth for the family list — both HomeScreen (read-only
-  // summary) and FamilyScreen (full add/edit/remove/status control) act on
-  // this same state, so they can never drift out of sync with each other.
-  const [family, setFamily] = useState<FamilyMember[]>(INITIAL_FAMILY);
-
-  // Same pattern for hazards — MapScreen (full map display) and HomeScreen
-  // (featured alert card) both read from this single app-level list.
+  // Family, plans, and safe locations persist to on-device JSON files (see
+  // src/data/persistence.ts) so edits survive app reloads. Hazards stay
+  // in-memory only — not requested to persist, and re-seeding them fresh
+  // each run keeps the map's example hazards consistent for demos.
+  const [family, setFamily, familyLoaded] = usePersistentState<FamilyMember[]>('family.json', INITIAL_FAMILY);
   const [hazards, setHazards] = useState<Hazard[]>(INITIAL_HAZARDS);
+  const [plans, setPlans, plansLoaded] = usePersistentState<EvacuationPlan[]>('plans.json', INITIAL_PLANS);
+  const [safeLocations, setSafeLocations, safeLocationsLoaded] = usePersistentState<SafeLocation[]>(
+    'safeLocations.json',
+    INITIAL_SAFE_LOCATIONS
+  );
 
-  // Same pattern again for plans and safe locations — both owned by
-  // PlansScreen, but lifted to app scope in case other screens need them later.
-  const [plans, setPlans] = useState<EvacuationPlan[]>(INITIAL_PLANS);
-  const [safeLocations, setSafeLocations] = useState<SafeLocation[]>(INITIAL_SAFE_LOCATIONS);
+  const dataLoaded = familyLoaded && plansLoaded && safeLocationsLoaded;
 
   // Set when the user taps "Show directions" on a plan — switches to the Map
   // tab and draws a route preview there. Persists across tab switches until
@@ -58,12 +59,12 @@ export default function App() {
   };
 
   const onLayout = useCallback(async () => {
-    if (fontsLoaded) {
+    if (fontsLoaded && dataLoaded) {
       await SplashScreen.hideAsync();
     }
-  }, [fontsLoaded]);
+  }, [fontsLoaded, dataLoaded]);
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded || !dataLoaded) {
     return null;
   }
 
