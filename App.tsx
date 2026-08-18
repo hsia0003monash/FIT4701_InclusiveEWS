@@ -18,7 +18,7 @@ import { PlansScreen } from './src/screens/PlansScreen';
 import { RTabBar, TabKey } from './src/components/RTabBar';
 import { INITIAL_FAMILY, FamilyMember } from './src/data/family';
 import { INITIAL_HAZARDS, Hazard } from './src/data/hazards';
-import { INITIAL_PLANS, INITIAL_SAFE_LOCATIONS, EvacuationPlan, SafeLocation } from './src/data/plans';
+import { INITIAL_PLANS, INITIAL_SAFE_LOCATIONS, EvacuationPlan, SafeLocation, MapDestination } from './src/data/plans';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -47,6 +47,16 @@ export default function App() {
   const [plans, setPlans] = useState<EvacuationPlan[]>(INITIAL_PLANS);
   const [safeLocations, setSafeLocations] = useState<SafeLocation[]>(INITIAL_SAFE_LOCATIONS);
 
+  // Set when the user taps "Show directions" on a plan — switches to the Map
+  // tab and draws a route preview there. Persists across tab switches until
+  // explicitly cleared, so navigating away and back keeps the route visible.
+  const [mapDestination, setMapDestination] = useState<MapDestination | null>(null);
+
+  const handleNavigateToLocation = (destination: MapDestination) => {
+    setMapDestination(destination);
+    setActiveTab('Map');
+  };
+
   const onLayout = useCallback(async () => {
     if (fontsLoaded) {
       await SplashScreen.hideAsync();
@@ -64,7 +74,9 @@ export default function App() {
           {activeTab === 'Home' && (
             <HomeScreen family={family} hazards={hazards} onSeeAllFamily={() => setActiveTab('Family')} />
           )}
-          {activeTab === 'Map' && <MapScreen hazards={hazards} />}
+          {activeTab === 'Map' && (
+            <MapScreen hazards={hazards} destination={mapDestination} onClearDestination={() => setMapDestination(null)} />
+          )}
           {activeTab === 'Family' && <FamilyScreen family={family} onUpdateFamily={setFamily} />}
           {activeTab === 'Plans' && (
             <PlansScreen
@@ -72,6 +84,7 @@ export default function App() {
               onUpdatePlans={setPlans}
               safeLocations={safeLocations}
               onUpdateSafeLocations={setSafeLocations}
+              onNavigateToLocation={handleNavigateToLocation}
             />
           )}
         </View>

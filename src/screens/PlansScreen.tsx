@@ -1,7 +1,8 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Location from 'expo-location';
 import { RButton } from '../components/RButton';
 import { RCard } from '../components/RCard';
 import { RCenteredOverlay } from '../components/RCenteredOverlay';
@@ -15,6 +16,7 @@ import {
   GENERAL_PLAN_ICON,
   GENERAL_PLAN_THEME,
   INITIAL_PLANS,
+  MapDestination,
   PlanHazardType,
   SafeLocation,
 } from '../data/plans';
@@ -24,9 +26,40 @@ interface PlansScreenProps {
   onUpdatePlans: (plans: EvacuationPlan[]) => void;
   safeLocations: SafeLocation[];
   onUpdateSafeLocations: (locations: SafeLocation[]) => void;
+  onNavigateToLocation: (destination: MapDestination) => void;
+}
+
+// Same key used for Directions in MapScreen — also needs the Places API
+// enabled on the same Google Cloud project. When unset, the address field
+// falls back to plain typed entry, geocoded on save via the device's native
+// geocoder (Location.geocodeAsync) rather than any Google API.
+const GOOGLE_PLACES_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY;
+
+interface AddressSuggestion {
+  placeId: string;
+  description: string;
+}
+
+// Groups a sequence of autocomplete keystroke requests plus the final Place
+// Details lookup into one billed "session" instead of charging per request —
+// generated fresh each time the address field starts being edited.
+function generateSessionToken() {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
 
 type OverlayKind = 'location' | 'plan' | 'picker' | null;
+
+/** Resolves a plan's effective destination (its own location, or the default) into map coordinates. Returns null if that location has no resolved coordinates yet. */
+function resolvePlanDestination(
+  plan: EvacuationPlan,
+  safeLocations: SafeLocation[],
+  defaultLocation: SafeLocation | null
+): MapDestination | null {
+  const loc = plan.safeLocationId ? safeLocations.find((l) => l.id === plan.safeLocationId) : defaultLocation;
+  if (!loc || loc.lat === undefined || loc.long === undefined) return null;
+  return { latitude: loc.lat, longitude: loc.long, name: loc.name };
+}
+
 
 function getPlanStyle(hazardType: PlanHazardType) {
   if (hazardType === 'General') {
@@ -128,7 +161,13 @@ function LocationSelector({
   );
 }
 
-export function PlansScreen({ plans, onUpdatePlans, safeLocations, onUpdateSafeLocations }: PlansScreenProps) {
+export function PlansScreen({
+  plans,
+  onUpdatePlans,
+  safeLocations,
+  onUpdateSafeLocations,
+  onNavigateToLocation,
+}: PlansScreenProps) {
   const theme = useTheme();
   const { colors, spacing, radius, sizing } = theme;
 
@@ -153,7 +192,12 @@ export function PlansScreen({ plans, onUpdatePlans, safeLocations, onUpdateSafeL
   const [selectedLocation, setSelectedLocation] = useState<SafeLocation | null>(null);
   const [draftLocName, setDraftLocName] = useState('');
   const [draftLocAddress, setDraftLocAddress] = useState('');
+  const [draftLocLat, setDraftLocLat] = useState<number | undefined>(undefined);
+  const [draftLocLong, setDraftLocLong] = useState<number | undefined>(undefined);
   const [confirmingRemoveLocation, setConfirmingRemoveLocation] = useState(false);
+  const [isSavingLocation, setIsSavingLocation] = useState(false);
+  const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
+  const [placesSessionToken, setPlacesSessionToken] = useState<string | null>(null);
 
   // Plan form state
   const [planMode, setPlanMode] = useState<'view' | 'edit' | 'add'>('add');
@@ -182,6 +226,10 @@ export function PlansScreen({ plans, onUpdatePlans, safeLocations, onUpdateSafeL
     setSelectedLocation(location);
     setDraftLocName(location.name);
     setDraftLocAddress(location.address);
+    setDraftLocLat(location.lat);
+    setDraftLocLong(location.long);
+    setAddressSuggestions([]);
+    setPlacesSessionToken(null);
     setLocationMode('edit');
     setActiveOverlay('location');
   };
@@ -191,14 +239,102 @@ export function PlansScreen({ plans, onUpdatePlans, safeLocations, onUpdateSafeL
     setSelectedLocation(null);
     setDraftLocName('');
     setDraftLocAddress('');
+    setDraftLocLat(undefined);
+    setDraftLocLong(undefined);
+    setAddressSuggestions([]);
+    setPlacesSessionToken(null);
     setLocationMode('add');
     setActiveOverlay('location');
   };
 
-  const handleSaveLocation = () => {
+  // Debounced address autocomplete — waits for a short pause in typing before
+  // firing a request, and only while the location form is actually open.
+  useEffect(() => {
+    if (!GOOGLE_PLACES_KEY) return;
+    if (activeOverlay !== 'location' || (locationMode !== 'add' && locationMode !== 'edit')) return;
+
+    const query = draftLocAddress.trim();
+    if (query.length < 3) {
+      setAddressSuggestions([]);
+      return;
+    }
+
+    const token = placesSessionToken ?? generateSessionToken();
+    if (!placesSessionToken) setPlacesSessionToken(token);
+
+    const timeout = setTimeout(async () => {
+      try {
+        const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
+          query
+        )}&key=${GOOGLE_PLACES_KEY}&sessiontoken=${token}&components=country:au`;
+        const response = await fetch(url);
+        const data = await response.json();
+        setAddressSuggestions(
+          (data.predictions ?? []).map((p: any) => ({ placeId: p.place_id, description: p.description }))
+        );
+      } catch (err) {
+        console.error('Address autocomplete request failed:', err);
+        setAddressSuggestions([]);
+      }
+    }, 350);
+
+    return () => clearTimeout(timeout);
+  }, [draftLocAddress, activeOverlay, locationMode]);
+
+  const handleAddressChange = (text: string) => {
+    setDraftLocAddress(text);
+    // A manual edit invalidates any coordinates captured from a prior
+    // suggestion pick — handleSaveLocation falls back to geocoding on save.
+    setDraftLocLat(undefined);
+    setDraftLocLong(undefined);
+  };
+
+  const handleSelectSuggestion = async (suggestion: AddressSuggestion) => {
+    setDraftLocAddress(suggestion.description);
+    setAddressSuggestions([]);
+    if (!GOOGLE_PLACES_KEY) return;
+
+    try {
+      const token = placesSessionToken ?? generateSessionToken();
+      const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${suggestion.placeId}&fields=geometry&key=${GOOGLE_PLACES_KEY}&sessiontoken=${token}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      const location = data.result?.geometry?.location;
+      if (location) {
+        setDraftLocLat(location.lat);
+        setDraftLocLong(location.lng);
+      }
+    } catch (err) {
+      console.error('Place details request failed:', err);
+    } finally {
+      setPlacesSessionToken(null); // session ends once a place is picked
+    }
+  };
+
+  const handleSaveLocation = async () => {
     const name = draftLocName.trim();
     const address = draftLocAddress.trim();
     if (!name || !address) return;
+
+    setIsSavingLocation(true);
+    let lat = draftLocLat;
+    let long = draftLocLong;
+
+    // No precise coordinates yet (user typed freely without picking a
+    // suggestion, or Places isn't configured) — fall back to the device's
+    // native geocoder, same as before.
+    if (lat === undefined || long === undefined) {
+      try {
+        const results = await Location.geocodeAsync(address);
+        if (results[0]) {
+          lat = results[0].latitude;
+          long = results[0].longitude;
+        }
+      } catch (err) {
+        console.error('Geocoding failed:', err);
+      }
+    }
+    setIsSavingLocation(false);
 
     if (locationMode === 'add') {
       const newLocation: SafeLocation = {
@@ -206,10 +342,18 @@ export function PlansScreen({ plans, onUpdatePlans, safeLocations, onUpdateSafeL
         name,
         address,
         isDefault: safeLocations.length === 0, // first location added becomes the default automatically
+        lat,
+        long,
       };
       onUpdateSafeLocations([...safeLocations, newLocation]);
     } else if (locationMode === 'edit' && selectedLocation) {
-      onUpdateSafeLocations(safeLocations.map((l) => (l.id === selectedLocation.id ? { ...l, name, address } : l)));
+      onUpdateSafeLocations(
+        safeLocations.map((l) =>
+          l.id === selectedLocation.id
+            ? { ...l, name, address, lat: lat ?? l.lat, long: long ?? l.long } // keep prior coords if nothing new was found
+            : l
+        )
+      );
     }
     closeOverlay();
   };
@@ -455,6 +599,13 @@ export function PlansScreen({ plans, onUpdatePlans, safeLocations, onUpdateSafeL
                   {selectedLocation.address}
                 </RText>
 
+                {selectedLocation.lat === undefined && (
+                  <RText variant="caption" color={colors.ink3}>
+                    No coordinates found for this address — directions won't be available until it's edited with a
+                    more specific address.
+                  </RText>
+                )}
+
                 {selectedLocation.isDefault ? (
                   <View style={[styles.defaultBadge, { borderRadius: radius.pill, paddingHorizontal: spacing.scale[4], paddingVertical: spacing.scale[1], backgroundColor: colors.surface2 }]}>
                     <Ionicons name="star" size={sizing.icon.small} color={colors.ink2} />
@@ -496,9 +647,47 @@ export function PlansScreen({ plans, onUpdatePlans, safeLocations, onUpdateSafeL
             {(locationMode === 'edit' || locationMode === 'add') && (
               <>
                 <RFormField label="Name" value={draftLocName} onChangeText={setDraftLocName} placeholder="e.g. Mum and Dad's place" />
-                <RFormField label="Address" value={draftLocAddress} onChangeText={setDraftLocAddress} placeholder="e.g. 12 Smith St, Brunswick" />
+
+                <View style={styles.addressFieldWrapper}>
+                  <RFormField
+                    label="Address"
+                    value={draftLocAddress}
+                    onChangeText={handleAddressChange}
+                    placeholder="e.g. 12 Smith St, Brunswick"
+                  />
+                  {addressSuggestions.length > 0 && (
+                    <View
+                      style={[
+                        styles.suggestionsList,
+                        { backgroundColor: colors.surface, borderColor: colors.hairline, borderRadius: radius.md },
+                      ]}
+                    >
+                      {addressSuggestions.map((suggestion, index) => (
+                        <Pressable
+                          key={suggestion.placeId}
+                          onPress={() => handleSelectSuggestion(suggestion)}
+                          accessibilityRole="button"
+                          accessibilityLabel={suggestion.description}
+                          style={[
+                            styles.suggestionRow,
+                            index < addressSuggestions.length - 1 && {
+                              borderBottomWidth: 1,
+                              borderBottomColor: colors.hairline,
+                            },
+                          ]}
+                        >
+                          <Ionicons name="location-outline" size={sizing.icon.small} color={colors.ink3} />
+                          <RText variant="secondary" color={colors.ink} style={{ flex: 1 }}>
+                            {suggestion.description}
+                          </RText>
+                        </Pressable>
+                      ))}
+                    </View>
+                  )}
+                </View>
+
                 <RButton
-                  label={locationMode === 'add' ? 'Add location' : 'Save changes'}
+                  label={isSavingLocation ? 'Finding location…' : locationMode === 'add' ? 'Add location' : 'Save changes'}
                   variant="primary"
                   size="l"
                   icon="checkmark"
@@ -586,9 +775,30 @@ export function PlansScreen({ plans, onUpdatePlans, safeLocations, onUpdateSafeL
                       ))}
                     </View>
 
+                    {(() => {
+                      const destination = resolvePlanDestination(selectedPlan, safeLocations, defaultLocation);
+                      return destination ? (
+                        <RButton
+                          label={`Show directions to ${destination.name}`}
+                          variant="primary"
+                          size="l"
+                          icon="navigate"
+                          iconPosition="leading"
+                          onPress={() => {
+                            onNavigateToLocation(destination);
+                            closeOverlay();
+                          }}
+                        />
+                      ) : (
+                        <RText variant="caption" color={colors.ink3}>
+                          Directions unavailable — the safe location for this plan doesn't have a saved position yet.
+                        </RText>
+                      );
+                    })()}
+
                     <RButton
                       label="Edit"
-                      variant="primary"
+                      variant="secondary"
                       size="l"
                       icon="create-outline"
                       iconPosition="leading"
@@ -748,5 +958,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: 6,
+  },
+  addressFieldWrapper: {
+    position: 'relative',
+    zIndex: 20,
+  },
+  suggestionsList: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    marginTop: 4,
+    borderWidth: 1,
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+  },
+  suggestionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
 });

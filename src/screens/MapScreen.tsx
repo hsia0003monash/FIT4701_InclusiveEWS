@@ -10,12 +10,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
-import MapView, { Circle, Marker } from 'react-native-maps';
+import MapView, { Circle, Marker, Polyline } from 'react-native-maps';
 
 import { RCenteredOverlay } from '../components/RCenteredOverlay';
 import { RText } from '../components/RText';
 import { useTheme } from '../theme/useTheme';
 import { Hazard, HazardType, HAZARD_STYLES, toRgba } from '../data/hazards';
+import type { MapDestination } from '../data/plans';
+
+// Set in .env — see .env.example. Falls back to a straight-line preview
+// (no real routing) when unset, so the app still works without a key.
+const GOOGLE_DIRECTIONS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY;
 
 // ---------------------------------------------------------------------------
 // Layout constants
@@ -26,19 +31,96 @@ const BASE_BOTTOM = 25;
 
 interface MapScreenProps {
   hazards: Hazard[];
+  /** Set when the user taps "Show directions" on a plan. Draws a real
+   * road-following route via a single Google Directions API request when
+   * EXPO_PUBLIC_GOOGLE_MAPS_KEY is set, or a straight-line preview otherwise. */
+  destination?: MapDestination | null;
+  onClearDestination?: () => void;
+}
+
+interface RouteInfo {
+  distanceKm: number;
+  durationMin: number;
+}
+
+// Straight-line (haversine) distance in km — used as a fallback for the
+// directions banner when no Directions API key is configured.
+function distanceKm(a: { latitude: number; longitude: number }, b: { latitude: number; longitude: number }) {
+  const R = 6371;
+  const dLat = ((b.latitude - a.latitude) * Math.PI) / 180;
+  const dLon = ((b.longitude - a.longitude) * Math.PI) / 180;
+  const lat1 = (a.latitude * Math.PI) / 180;
+  const lat2 = (b.latitude * Math.PI) / 180;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+interface DirectionStep {
+  instruction: string;
+  distance: string;
+  duration: string;
+}
+
+// Google's step instructions come as small HTML fragments (e.g. "<b>Turn left</b>
+// onto <b>High St</b>") — strip tags down to plain text for display.
+function stripHtml(html: string) {
+  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+// Decodes Google's encoded polyline format (the standard algorithm used by
+// the Directions API's overview_polyline.points) into a list of coordinates.
+// This is what lets us draw the real route from a single API response
+// without a separate rendering library doing the fetch for us.
+function decodePolyline(encoded: string): { latitude: number; longitude: number }[] {
+  const points: { latitude: number; longitude: number }[] = [];
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+
+  while (index < encoded.length) {
+    let shift = 0;
+    let result = 0;
+    let byte: number;
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+    lat += result & 1 ? ~(result >> 1) : result >> 1;
+
+    shift = 0;
+    result = 0;
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+    lng += result & 1 ? ~(result >> 1) : result >> 1;
+
+    points.push({ latitude: lat / 1e5, longitude: lng / 1e5 });
+  }
+
+  return points;
 }
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export function MapScreen({ hazards }: MapScreenProps) {
+export function MapScreen({ hazards, destination, onClearDestination }: MapScreenProps) {
   const { colors, severity, spacing, radius, sizing } = useTheme();
   const { height } = useWindowDimensions();
   const [placeLabel, setPlaceLabel] = useState<string | null>(null);
   const [selectedHazard, setSelectedHazard] = useState<Hazard | null>(null);
   const [legendOpen, setLegendOpen] = useState(false);
   const [iconsReady, setIconsReady] = useState(false);
+  const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
+  const [directionsFailed, setDirectionsFailed] = useState(false);
+  const [directionSteps, setDirectionSteps] = useState<DirectionStep[]>([]);
+  const [stepsOpen, setStepsOpen] = useState(false);
+  const [routeCoordinates, setRouteCoordinates] = useState<{ latitude: number; longitude: number }[]>([]);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [stepSheetDismissed, setStepSheetDismissed] = useState(false);
 
   const activeHazards = hazards.filter((h) => h.status === 'active');
 
@@ -162,17 +244,129 @@ export function MapScreen({ hazards }: MapScreenProps) {
     });
   };
 
-  // Only one centered overlay (hazard card or legend) should ever be open at once —
-  // opening one always closes the other, which matters especially for the
-  // restricted-field-of-view persona this screen is designed around.
+  // Only one centered overlay (hazard card, legend, or turn-by-turn steps)
+  // should ever be open at once — opening one always closes the others,
+  // which matters especially for the restricted-field-of-view persona this
+  // screen is designed around.
   const openHazard = (hazard: Hazard) => {
     setLegendOpen(false);
+    setStepsOpen(false);
     setSelectedHazard(hazard);
   };
 
   const toggleLegend = () => {
     setSelectedHazard(null);
+    setStepsOpen(false);
     setLegendOpen((prev) => !prev);
+  };
+
+  const openSteps = () => {
+    setSelectedHazard(null);
+    setLegendOpen(false);
+    setStepsOpen(true);
+  };
+
+  // Reset everything route-related as soon as the destination changes or is dismissed.
+  useEffect(() => {
+    setRouteInfo(null);
+    setDirectionSteps([]);
+    setStepsOpen(false);
+    setRouteCoordinates([]);
+    setDirectionsFailed(false);
+    setCurrentStepIndex(0);
+    setStepSheetDismissed(false);
+  }, [destination]);
+
+  // Single Directions API request per route: the response already contains
+  // the route geometry (an encoded polyline), total distance/duration, and
+  // per-step turn instructions — decodePolyline() unpacks the geometry, so
+  // there's no need for a second call or a separate rendering library.
+  //
+  // Depends on `region` as well as `destination` because MapScreen unmounts
+  // on every tab switch, so `region` is briefly null right after navigating
+  // here from a "Show directions" tap — this effect needs to retry once the
+  // location fix actually resolves, not just on the initial (region-less) fire.
+  // The routeCoordinates/directionsFailed checks stop it from re-fetching on
+  // every subsequent location tick once a route has already been resolved.
+  useEffect(() => {
+    if (!destination) return;
+
+    if (!GOOGLE_DIRECTIONS_KEY) {
+      // No key: just frame a straight line between the two points once we have one.
+      if (region && mapRef.current) {
+        mapRef.current.fitToCoordinates(
+          [
+            { latitude: region.latitude, longitude: region.longitude },
+            { latitude: destination.latitude, longitude: destination.longitude },
+          ],
+          { edgePadding: { top: 120, right: 60, bottom: 220, left: 60 }, animated: true }
+        );
+      }
+      return;
+    }
+
+    if (!region) return; // waiting for a location fix
+    if (routeCoordinates.length > 0 || directionsFailed) return; // already resolved for this destination
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${region.latitude},${region.longitude}&destination=${destination.latitude},${destination.longitude}&key=${GOOGLE_DIRECTIONS_KEY}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        if (cancelled) return;
+
+        const route = data.routes?.[0];
+        const leg = route?.legs?.[0];
+        if (!route || !leg) {
+          console.error('Directions request returned no route. status:', data.status, 'error_message:', data.error_message);
+          setDirectionsFailed(true);
+          if (mapRef.current) {
+            mapRef.current.fitToCoordinates(
+              [
+                { latitude: region.latitude, longitude: region.longitude },
+                { latitude: destination.latitude, longitude: destination.longitude },
+              ],
+              { edgePadding: { top: 120, right: 60, bottom: 220, left: 60 }, animated: true }
+            );
+          }
+          return;
+        }
+
+        const coordinates = decodePolyline(route.overview_polyline.points);
+        setRouteCoordinates(coordinates);
+        setRouteInfo({
+          distanceKm: leg.distance.value / 1000,
+          durationMin: leg.duration.value / 60,
+        });
+        setDirectionSteps(
+          (leg.steps ?? []).map((step: any) => ({
+            instruction: stripHtml(step.html_instructions ?? ''),
+            distance: step.distance?.text ?? '',
+            duration: step.duration?.text ?? '',
+          }))
+        );
+
+        if (mapRef.current) {
+          mapRef.current.fitToCoordinates(coordinates, {
+            edgePadding: { top: 120, right: 60, bottom: 220, left: 60 },
+            animated: true,
+          });
+        }
+      } catch (err) {
+        console.error('Directions request failed:', err);
+        setDirectionsFailed(true);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [destination, region, routeCoordinates.length, directionsFailed]);
+
+  const handleClearDirections = () => {
+    onClearDestination?.();
   };
 
   // -------------------------------------------------------------------------
@@ -300,6 +494,35 @@ export function MapScreen({ hazards }: MapScreenProps) {
                 </View>
               </Marker>
 
+              {destination && (
+                <>
+                  {(() => {
+                    const routePoints =
+                      routeCoordinates.length > 0
+                        ? routeCoordinates
+                        : [
+                            { latitude: region.latitude, longitude: region.longitude },
+                            { latitude: destination.latitude, longitude: destination.longitude },
+                          ];
+                    const isRealRoute = routeCoordinates.length > 0;
+                    return (
+                      <>
+                        <Polyline
+                          coordinates={routePoints}
+                          strokeColor={colors.accent}
+                          strokeWidth={4}
+                        />
+                      </>
+                    );
+                  })()}
+                  <Marker coordinate={{ latitude: destination.latitude, longitude: destination.longitude }}>
+                    <View style={[styles.destinationMarker, { backgroundColor: colors.accent }]}>
+                      <Ionicons name="flag" size={sizing.icon.medium} color="white" />
+                    </View>
+                  </Marker>
+                </>
+              )}
+
               {activeHazards.map((hazard) => {
                 const style = HAZARD_STYLES[hazard.type];
                 return (
@@ -334,6 +557,174 @@ export function MapScreen({ hazards }: MapScreenProps) {
                 );
               })}
             </MapView>
+
+            {/* Directions banner — persistent strip, not a blocking overlay, so the route stays visible underneath it */}
+            {destination && (
+              <View
+                style={[
+                  styles.directionsBanner,
+                  { backgroundColor: colors.surface, borderColor: colors.hairline, borderRadius: radius.card, padding: spacing.cardPadding },
+                ]}
+              >
+                <View style={[styles.directionsBannerText, { gap: spacing.scale[3] }]}>
+                  <Ionicons name="navigate" size={sizing.icon.medium} color={colors.accent} />
+                  <View style={{ flex: 1 }}>
+                    <RText variant="bodyEmphasis" color={colors.ink}>
+                      Directions to {destination.name}
+                    </RText>
+                    <RText variant="caption" color={colors.ink3}>
+                      {routeInfo
+                        ? `${routeInfo.distanceKm.toFixed(1)} km · ${Math.round(routeInfo.durationMin)} min drive`
+                        : directionsFailed
+                        ? `Couldn't get a route — ${distanceKm(region, destination).toFixed(1)} km away, straight line`
+                        : GOOGLE_DIRECTIONS_KEY
+                        ? 'Finding route…'
+                        : `${distanceKm(region, destination).toFixed(1)} km away, straight line`}
+                    </RText>
+                  </View>
+                </View>
+                {directionSteps.length > 0 && (
+                  <Pressable
+                    style={[
+                      styles.directionsCloseButton,
+                      { width: sizing.touchTarget.preferredPrimary, height: sizing.touchTarget.preferredPrimary },
+                    ]}
+                    onPress={() => setStepSheetDismissed((prev) => !prev)}
+                    accessibilityLabel={stepSheetDismissed ? 'Show step-by-step directions' : 'Hide step-by-step directions'}
+                  >
+                    <Ionicons name="list" size={sizing.icon.medium} color={colors.ink2} />
+                  </Pressable>
+                )}
+                <Pressable
+                  style={[
+                    styles.directionsCloseButton,
+                    { width: sizing.touchTarget.preferredPrimary, height: sizing.touchTarget.preferredPrimary },
+                  ]}
+                  onPress={handleClearDirections}
+                  accessibilityLabel="Clear directions"
+                >
+                  <Ionicons name="close" size={sizing.icon.medium} color={colors.ink3} />
+                </Pressable>
+              </View>
+            )}
+
+            {/* Current-step bottom sheet — docked above the map, not a blocking
+                overlay, so both personas can keep seeing the map and their
+                position while reading the next instruction. */}
+            {destination && directionSteps.length > 0 && !stepSheetDismissed && (
+              <View
+                style={[
+                  styles.stepSheet,
+                  {
+                    bottom: BASE_BOTTOM + sizing.touchTarget.preferredPrimary + BUTTON_GAP,
+                    backgroundColor: colors.surface,
+                    borderColor: colors.hairline,
+                    borderRadius: radius.card,
+                    padding: spacing.cardPadding,
+                    gap: spacing.scale[3],
+                  },
+                ]}
+              >
+                <View style={styles.stepSheetHeader}>
+                  <RText variant="caption" color={colors.ink3}>
+                    Step {currentStepIndex + 1} of {directionSteps.length}
+                  </RText>
+                  <Pressable
+                    style={[
+                      styles.stepSheetCloseButton,
+                      { width: sizing.touchTarget.preferredPrimary, height: sizing.touchTarget.preferredPrimary },
+                    ]}
+                    onPress={() => setStepSheetDismissed(true)}
+                    accessibilityLabel="Hide step-by-step panel"
+                  >
+                    <Ionicons name="chevron-down" size={sizing.icon.medium} color={colors.ink3} />
+                  </Pressable>
+                </View>
+
+                <RText variant="bodyEmphasis" color={colors.ink}>
+                  {directionSteps[currentStepIndex].instruction}
+                </RText>
+                <RText variant="secondary" color={colors.ink3}>
+                  {directionSteps[currentStepIndex].distance}
+                  {directionSteps[currentStepIndex].distance && directionSteps[currentStepIndex].duration ? ' · ' : ''}
+                  {directionSteps[currentStepIndex].duration}
+                </RText>
+
+                <View style={[styles.stepSheetNav, { gap: spacing.scale[3] }]}>
+                  <Pressable
+                    style={[
+                      styles.stepNavButton,
+                      {
+                        minHeight: sizing.touchTarget.preferredPrimary,
+                        borderRadius: radius.lg,
+                        backgroundColor: colors.surface2,
+                        opacity: currentStepIndex === 0 ? 0.4 : 1,
+                      },
+                    ]}
+                    onPress={() => setCurrentStepIndex((i) => Math.max(0, i - 1))}
+                    disabled={currentStepIndex === 0}
+                    accessibilityLabel="Previous step"
+                  >
+                    <Ionicons name="chevron-back" size={sizing.icon.medium} color={colors.ink} />
+                  </Pressable>
+                  <Pressable
+                    style={[
+                      styles.stepNavButton,
+                      {
+                        flex: 1,
+                        minHeight: sizing.touchTarget.preferredPrimary,
+                        borderRadius: radius.lg,
+                        backgroundColor: colors.ink,
+                        opacity: currentStepIndex === directionSteps.length - 1 ? 0.4 : 1,
+                      },
+                    ]}
+                    onPress={() => setCurrentStepIndex((i) => Math.min(directionSteps.length - 1, i + 1))}
+                    disabled={currentStepIndex === directionSteps.length - 1}
+                    accessibilityLabel="Next step"
+                  >
+                    <RText variant="bodyEmphasis" color={colors.bg}>
+                      {currentStepIndex === directionSteps.length - 1 ? "You've arrived" : 'Next step'}
+                    </RText>
+                    {currentStepIndex < directionSteps.length - 1 && (
+                      <Ionicons name="chevron-forward" size={sizing.icon.medium} color={colors.bg} />
+                    )}
+                  </Pressable>
+                </View>
+
+                <Pressable onPress={openSteps} accessibilityRole="button" accessibilityLabel="View full step list">
+                  <RText variant="caption" color={colors.ink2} style={{ textAlign: 'center' }}>
+                    View full list
+                  </RText>
+                </Pressable>
+              </View>
+            )}
+
+            {/* Turn-by-turn steps overlay */}
+            {stepsOpen && directionSteps.length > 0 && destination && (
+              <RCenteredOverlay title={`Directions to ${destination.name}`} onDismiss={() => setStepsOpen(false)}>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  <View style={{ gap: spacing.scale[4] }}>
+                    {directionSteps.map((step, i) => (
+                      <View key={i} style={{ flexDirection: 'row', gap: spacing.scale[3] }}>
+                        <RText variant="bodyEmphasis" color={colors.ink3}>
+                          {i + 1}.
+                        </RText>
+                        <View style={{ flex: 1, gap: spacing.scale[1] }}>
+                          <RText variant="body" color={colors.ink2}>
+                            {step.instruction}
+                          </RText>
+                          <RText variant="caption" color={colors.ink3}>
+                            {step.distance}
+                            {step.distance && step.duration ? ' · ' : ''}
+                            {step.duration}
+                          </RText>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </ScrollView>
+              </RCenteredOverlay>
+            )}
 
             {/* Hazard legend overlay */}
             {legendOpen && (
@@ -516,6 +907,67 @@ const styles = StyleSheet.create({
   hazardMarker: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  destinationMarker: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: 'white',
+  },
+  directionsBanner: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+  },
+  directionsBannerText: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  directionsCloseButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepSheet: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    borderWidth: 1,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  stepSheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  stepSheetCloseButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepSheetNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  stepNavButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
   },
   userLocationDot: {
     borderWidth: 3,

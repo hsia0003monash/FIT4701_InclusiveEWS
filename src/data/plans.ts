@@ -15,11 +15,27 @@ export interface SafeLocation {
   address: string;
   /** At most one location should have this set. */
   isDefault?: boolean;
+  /** Resolved automatically from `address` via geocoding when the location is saved. */
+  lat?: number;
+  long?: number;
 }
 
 export const INITIAL_SAFE_LOCATIONS: SafeLocation[] = [
-  { id: 'loc-parents', name: "Mum and Dad's place", address: '12 Smith St, Brunswick', isDefault: true },
-  { id: 'loc-community', name: 'Northcote Community Centre', address: '45 High St, Northcote' },
+  {
+    id: 'loc-parents',
+    name: "Mum and Dad's place",
+    address: '12 Smith St, Brunswick',
+    isDefault: true,
+    lat: -37.7666,
+    long: 144.9599,
+  },
+  {
+    id: 'loc-community',
+    name: 'Northcote Community Centre',
+    address: '45 High St, Northcote',
+    lat: -37.7699,
+    long: 144.9975,
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -45,6 +61,13 @@ export interface EvacuationPlan {
 // as "unspecific" without clashing with any real hazard's colour.
 export const GENERAL_PLAN_ICON: keyof typeof MaterialCommunityIcons.glyphMap = 'shield-account-outline';
 export const GENERAL_PLAN_THEME = HAZARD_STYLES.Misc.theme;
+
+/** A resolved point handed off to MapScreen when the user asks for directions to a plan's safe location. */
+export interface MapDestination {
+  latitude: number;
+  longitude: number;
+  name: string;
+}
 
 export const INITIAL_PLANS: EvacuationPlan[] = [
   {
