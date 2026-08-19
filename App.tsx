@@ -6,12 +6,15 @@ import {
   Inter_800ExtraBold,
   useFonts,
 } from '@expo-google-fonts/inter';
+import { NavigationContainer } from '@react-navigation/native';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback } from 'react';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { HomeScreen } from './src/screens/HomeScreen';
+import { AlertsProvider } from './src/context/AlertsContext';
+import { LanguageProvider } from './src/context/LanguageContext';
+import { AppNavigator } from './src/navigation/AppNavigator';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -36,10 +39,16 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <View style={{ flex: 1 }} onLayout={onLayout}>
-        <HomeScreen />
-        <StatusBar style="auto" />
-      </View>
+      <LanguageProvider>
+        <AlertsProvider>
+          <View style={{ flex: 1 }} onLayout={onLayout}>
+            <NavigationContainer>
+              <AppNavigator />
+            </NavigationContainer>
+            <StatusBar style="auto" />
+          </View>
+        </AlertsProvider>
+      </LanguageProvider>
     </SafeAreaProvider>
   );
 }
