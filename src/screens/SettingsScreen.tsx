@@ -21,6 +21,9 @@ interface SettingsScreenProps {
    * live there now, not duplicated here, since they're only meaningful while
    * looking at the actual map. */
   onOpenMapSettings: () => void;
+  /** Fires the full-screen alert flow using an active hazard, for trying the
+   * feature without needing to actually set up a deep link. */
+  onTriggerTestAlert: () => void;
 }
 
 const THEME_MODE_OPTIONS: { value: ThemeMode; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
@@ -35,7 +38,13 @@ const TEXT_SCALE_OPTIONS: { value: TextScale; label: string; icon: keyof typeof 
   { value: 'xlarge', label: 'Extra large', icon: 'text-outline' },
 ];
 
-export function SettingsScreen({ onResetFamily, onResetPlans, onResetSafeLocations, onOpenMapSettings }: SettingsScreenProps) {
+export function SettingsScreen({
+  onResetFamily,
+  onResetPlans,
+  onResetSafeLocations,
+  onOpenMapSettings,
+  onTriggerTestAlert,
+}: SettingsScreenProps) {
   const theme = useTheme();
   const { colors, spacing, radius, sizing } = theme;
   const { preferences, setPreferences } = usePreferences();
@@ -145,8 +154,7 @@ export function SettingsScreen({ onResetFamily, onResetPlans, onResetSafeLocatio
               Map
             </RText>
             <RText variant="body" color={colors.ink2}>
-              Marker and button appearance, simple map mode, and which travel modes to offer for directions all live
-              on the Map screen itself, since they're easiest to judge while actually looking at the map.
+              Map customisation and travel options
             </RText>
 
             <RButton
@@ -167,9 +175,24 @@ export function SettingsScreen({ onResetFamily, onResetPlans, onResetSafeLocatio
 
             <RToggleRow
               label="Read alerts aloud automatically"
-              description="Speaks the active alert on the Home screen as soon as it appears"
+              description="Speaks the alert (and your response plan, on the full-screen alert) as soon as it appears"
               value={preferences.autoReadAlerts}
               onChange={(autoReadAlerts) => updatePreferences({ autoReadAlerts })}
+              theme={theme}
+            />
+
+            <RToggleRow
+              label="Flash screen on alert"
+              description="enable flashing of screen/camera flash on alert. (WARNING: bright flashing light)"
+              value={preferences.flashOnAlert}
+              onChange={(flashOnAlert) => updatePreferences({ flashOnAlert })}
+              theme={theme}
+            />
+
+            <RToggleRow
+              label="Vibrate on alert"
+              value={preferences.vibrateOnAlert}
+              onChange={(vibrateOnAlert) => updatePreferences({ vibrateOnAlert })}
               theme={theme}
             />
 
@@ -181,6 +204,16 @@ export function SettingsScreen({ onResetFamily, onResetPlans, onResetSafeLocatio
               iconPosition="leading"
               onPress={() => Linking.openSettings()}
               accessibilityHint="Opens your device's system settings for this app's notifications"
+            />
+
+            <RButton
+              label="Send test alert"
+              variant="secondary"
+              size="m"
+              icon="megaphone-outline"
+              iconPosition="leading"
+              onPress={onTriggerTestAlert}
+              accessibilityHint="Shows the full-screen alert flow using an active hazard, for trying it without a deep link"
             />
           </RCard>
 

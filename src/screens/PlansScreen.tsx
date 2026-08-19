@@ -18,6 +18,7 @@ import {
   INITIAL_PLANS,
   MapDestination,
   PlanHazardType,
+  resolvePlanDestination,
   SafeLocation,
 } from '../data/plans';
 
@@ -52,18 +53,6 @@ function generateSessionToken() {
 }
 
 type OverlayKind = 'location' | 'plan' | 'picker' | null;
-
-/** Resolves a plan's effective destination (its own location, or the default) into map coordinates. Returns null if that location has no resolved coordinates yet. */
-function resolvePlanDestination(
-  plan: EvacuationPlan,
-  safeLocations: SafeLocation[],
-  defaultLocation: SafeLocation | null
-): MapDestination | null {
-  const loc = plan.safeLocationId ? safeLocations.find((l) => l.id === plan.safeLocationId) : defaultLocation;
-  if (!loc || loc.lat === undefined || loc.long === undefined) return null;
-  return { latitude: loc.lat, longitude: loc.long, name: loc.name };
-}
-
 
 function getPlanStyle(hazardType: PlanHazardType) {
   if (hazardType === 'General') {
@@ -794,7 +783,7 @@ export function PlansScreen({
                     </View>
 
                     {(() => {
-                      const destination = resolvePlanDestination(selectedPlan, safeLocations, defaultLocation);
+                      const destination = resolvePlanDestination(selectedPlan, safeLocations);
                       return destination ? (
                         <RButton
                           label={`Show directions to ${destination.name}`}

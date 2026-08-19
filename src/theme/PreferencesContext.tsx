@@ -54,6 +54,13 @@ export interface Preferences {
   mapButtonSize: MapButtonSize;
   /** Horizontal position of the on-map control cluster. */
   mapButtonPosition: MapButtonPosition;
+  /** Slow (safe, non-seizure-triggering rate) screen flash while a
+   * full-screen alert is showing. On by default — a real requirement for
+   * the hard-of-hearing persona this feature is built for — but can be
+   * turned off for anyone sensitive to flashing screens. */
+  flashOnAlert: boolean;
+  /** Repeating vibration while a full-screen alert is showing. */
+  vibrateOnAlert: boolean;
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -67,6 +74,8 @@ export const DEFAULT_PREFERENCES: Preferences = {
   mapMarkerSize: 'medium',
   mapButtonSize: 'medium',
   mapButtonPosition: 'center',
+  flashOnAlert: false,
+  vibrateOnAlert: true,
 };
 
 interface PreferencesContextValue {

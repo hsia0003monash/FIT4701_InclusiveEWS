@@ -78,6 +78,19 @@ export function resolvePlanForHazardType(plans: EvacuationPlan[], hazardType: Pl
   return plans.find((p) => p.hazardType === hazardType) ?? plans.find((p) => p.hazardType === 'General') ?? null;
 }
 
+/**
+ * Resolves a plan's effective destination (its own saved location, or
+ * whichever location is marked default) into map coordinates. Returns null
+ * if that location doesn't have resolved coordinates yet (e.g. an address
+ * that failed to geocode).
+ */
+export function resolvePlanDestination(plan: EvacuationPlan, safeLocations: SafeLocation[]): MapDestination | null {
+  const defaultLocation = safeLocations.find((l) => l.isDefault) ?? null;
+  const loc = plan.safeLocationId ? safeLocations.find((l) => l.id === plan.safeLocationId) : defaultLocation;
+  if (!loc || loc.lat === undefined || loc.long === undefined) return null;
+  return { latitude: loc.lat, longitude: loc.long, name: loc.name };
+}
+
 export const INITIAL_PLANS: EvacuationPlan[] = [
   {
     id: 'plan-general',

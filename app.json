@@ -5,7 +5,8 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "scheme": "inclusiveews",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
@@ -32,6 +33,12 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow More Accessible EWS to use your location.",
           "isAndroidBackgroundLocationEnabled": true
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow More Accessible EWS to use your camera flash to strobe during emergency alerts. No photos or video are taken."
         }
       ]
     ]
