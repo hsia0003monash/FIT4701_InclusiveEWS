@@ -1,15 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Fragment, useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-  useWindowDimensions,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import MapView, { Circle, Marker, Polyline } from 'react-native-maps';
 
@@ -52,16 +44,6 @@ interface MapScreenProps {
 
 // Standard Google Maps "dark mode" style JSON — only takes effect when the
 // map provider is actually Google (Android by default; iOS uses Apple Maps
-// Turns off the native POI/transit icon layer baked into the Google Maps
-// basemap — those icons (shops, parks, stations) are independently tappable
-// and can trigger the OS's own "open in Google Maps" prompt if a hazard
-// marker happens to sit near one, unrelated to anything this app renders.
-// Applied in both light and dark mode, not just dark.
-const BASE_MAP_STYLE = [
-  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-];
-
 // and ignores this prop entirely, so mapType="mutedStandard" covers dark
 // mode there instead — see the render below).
 const DARK_MAP_STYLE = [
@@ -159,7 +141,7 @@ function decodePolyline(encoded: string): { latitude: number; longitude: number 
 
 export function MapScreen({ hazards, plans, onViewPlanForHazard, destination, onClearDestination }: MapScreenProps) {
   const { colors, severity, spacing, radius, sizing, scheme, preferences } = useTheme();
-  const { height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [placeLabel, setPlaceLabel] = useState<string | null>(null);
   const [selectedHazard, setSelectedHazard] = useState<Hazard | null>(null);
   const [legendOpen, setLegendOpen] = useState(false);
@@ -425,68 +407,26 @@ export function MapScreen({ hazards, plans, onViewPlanForHazard, destination, on
   if (!region) {
     return (
       <View style={[styles.screen, { backgroundColor: colors.bg }]}>
-        <SafeAreaView edges={['top']} style={styles.flex}>
-          <ScrollView contentContainerStyle={[styles.content, { padding: spacing.screenPadding, gap: spacing.screenPadding }]}>
-            <View style={styles.headerRow}>
-              <View style={styles.headerText}>
-                <RText variant="eyebrowLabel" color={colors.ink3}>
-                  MAP
-                </RText>
-                <View style={styles.locationRow}>
-                  <Ionicons name="location" size={16} color={colors.ink} />
-                  <ActivityIndicator size="small" color={colors.ink} />
-                </View>
-              </View>
-              <View
-                style={[
-                  styles.avatar,
-                  {
-                    width: sizing.avatar.medium,
-                    height: sizing.avatar.medium,
-                    borderRadius: sizing.avatar.medium / 2,
-                    backgroundColor: colors.ink,
-                    borderColor: colors.hairline,
-                  },
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel="Your profile"
-              >
-                <RText variant="secondary" color={colors.bg}>
-                  SL
-                </RText>
-              </View>
-            </View>
-            <View style={[styles.mapContainer, { height: height * 0.75 }]}>
-              <MapView
-                style={styles.map}
-                customMapStyle={scheme === 'dark' ? [...BASE_MAP_STYLE, ...DARK_MAP_STYLE] : BASE_MAP_STYLE}
-                mapType={Platform.OS === 'ios' && scheme === 'dark' ? 'mutedStandard' : 'standard'}
-                showsPointsOfInterest={false}
-              />
-            </View>
-          </ScrollView>
-        </SafeAreaView>
-      </View>
-    );
-  }
+        <MapView
+          style={StyleSheet.absoluteFillObject}
+          customMapStyle={scheme === 'dark' ? DARK_MAP_STYLE : []}
+          mapType={Platform.OS === 'ios' && scheme === 'dark' ? 'mutedStandard' : 'standard'}
+        />
 
-  // -------------------------------------------------------------------------
-  // Main render
-  // -------------------------------------------------------------------------
-  return (
-    <View style={[styles.screen, { backgroundColor: colors.bg }]}>
-      <SafeAreaView edges={['top']} style={styles.flex}>
-        <ScrollView contentContainerStyle={[styles.content, { padding: spacing.screenPadding, gap: spacing.screenPadding }]}>
-          <View style={styles.headerRow}>
+        <View style={[styles.topStack, { top: insets.top + 12 }]}>
+          <View
+            style={[
+              styles.headerRow,
+              { backgroundColor: colors.surface, borderColor: colors.hairline, borderRadius: radius.card, padding: spacing.cardPadding },
+            ]}
+          >
             <View style={styles.headerText}>
               <RText variant="eyebrowLabel" color={colors.ink3}>
                 MAP
               </RText>
               <View style={styles.locationRow}>
                 <Ionicons name="location" size={16} color={colors.ink} />
-                <RText variant="bodyEmphasis" color={colors.ink}>
-                  {placeLabel ?? 'Locating…'}
-                </RText>
+                <ActivityIndicator size="small" color={colors.ink} />
               </View>
             </View>
             <View
@@ -508,260 +448,309 @@ export function MapScreen({ hazards, plans, onViewPlanForHazard, destination, on
               </RText>
             </View>
           </View>
+        </View>
+      </View>
+    );
+  }
 
-          <View style={[styles.mapContainer, { height: height * 0.75 }]}>
-            <MapView
-              style={styles.map}
-              region={region}
-              ref={mapRef}
-              onRegionChangeComplete={setCurrentRegion}
-              showsMyLocationButton={false}
-              showsUserLocation={false}
-              customMapStyle={scheme === 'dark' ? [...BASE_MAP_STYLE, ...DARK_MAP_STYLE] : BASE_MAP_STYLE}
-              mapType={Platform.OS === 'ios' && scheme === 'dark' ? 'mutedStandard' : 'standard'}
-              showsPointsOfInterest={false}
+  // -------------------------------------------------------------------------
+  // Main render
+  // -------------------------------------------------------------------------
+  return (
+    <View style={[styles.screen, { backgroundColor: colors.bg }]}>
+      <MapView
+        style={StyleSheet.absoluteFillObject}
+        region={region}
+        ref={mapRef}
+        onRegionChangeComplete={setCurrentRegion}
+        showsMyLocationButton={false}
+        showsUserLocation={false}
+        customMapStyle={scheme === 'dark' ? DARK_MAP_STYLE : []}
+        mapType={Platform.OS === 'ios' && scheme === 'dark' ? 'mutedStandard' : 'standard'}
+      >
+        <Marker
+          coordinate={{ latitude: region.latitude, longitude: region.longitude }}
+          anchor={{ x: 0.5, y: 0.78 }}
+          tracksViewChanges
+          flat
+        >
+          <View style={styles.userLocationWrapper}>
+            <View
+              style={{
+                transform: [{ rotate: `${heading ?? 0}deg` }],
+                alignItems: 'center',
+                opacity: heading !== null ? 1 : 0,
+              }}
             >
-              <Marker
-                coordinate={{ latitude: region.latitude, longitude: region.longitude }}
-                anchor={{ x: 0.5, y: 0.78 }}
-                tracksViewChanges
-                flat
-              >
-                <View style={styles.userLocationWrapper}>
-                  <View
-                    style={{
-                      transform: [{ rotate: `${heading ?? 0}deg` }],
-                      alignItems: 'center',
-                      opacity: heading !== null ? 1 : 0,
-                    }}
-                  >
-                    <View style={[styles.headingCone, { borderBottomColor: colors.accent }]} />
-                    <View
-                      style={[
-                        styles.userLocationDot,
-                        {
-                          width: sizing.icon.large,
-                          height: sizing.icon.large,
-                          borderRadius: sizing.icon.large / 2,
-                          backgroundColor: colors.accent,
-                          borderColor: colors.surface,
-                        },
-                      ]}
-                    />
-                  </View>
-                </View>
-              </Marker>
-
-              {destination && (
-                <>
-                  {(() => {
-                    const routePoints =
-                      routeCoordinates.length > 0
-                        ? routeCoordinates
-                        : [
-                            { latitude: region.latitude, longitude: region.longitude },
-                            { latitude: destination.latitude, longitude: destination.longitude },
-                          ];
-                    return (
-                      <>
-                        {/* White casing underneath so the route reads clearly against busy map detail */}
-                        <Polyline coordinates={routePoints} strokeColor="#FFFFFF" strokeWidth={8} />
-                        <Polyline coordinates={routePoints} strokeColor={colors.accent} strokeWidth={4} />
-                      </>
-                    );
-                  })()}
-                  <Marker coordinate={{ latitude: destination.latitude, longitude: destination.longitude }}>
-                    <View style={[styles.destinationMarker, { backgroundColor: colors.accent }]}>
-                      <Ionicons name="flag" size={sizing.icon.medium} color="white" />
-                    </View>
-                  </Marker>
-                </>
-              )}
-
-              {activeHazards.map((hazard) => {
-                const style = HAZARD_STYLES[hazard.type];
-                // Simple map: every hazard looks the same at a glance —
-                // still identified precisely once opened via the detail panel.
-                const displayTheme = preferences.simpleMap ? SIMPLE_HAZARD_THEME : style.theme;
-                const displayIcon = preferences.simpleMap ? SIMPLE_HAZARD_ICON : style.icon;
-                return (
-                  <Fragment key={hazard.id}>
-                    <Circle
-                      center={{ latitude: hazard.lat, longitude: hazard.long }}
-                      radius={hazard.effectRadius}
-                      strokeColor={toRgba(displayTheme, 0.9)}
-                      fillColor={toRgba(displayTheme, 0.18)}
-                      strokeWidth={4}
-                    />
-                    <Marker
-                      coordinate={{ latitude: hazard.lat, longitude: hazard.long }}
-                      onPress={() => openHazard(hazard)}
-                      tracksViewChanges={!iconsReady}
-                    >
-                      <View
-                        style={[
-                          styles.hazardMarker,
-                          {
-                            width: sizing.avatar.large,
-                            height: sizing.avatar.large,
-                            borderRadius: sizing.avatar.large / 2,
-                            backgroundColor: toRgba(displayTheme, 1),
-                          },
-                        ]}
-                      >
-                        <MaterialCommunityIcons name={displayIcon} size={sizing.icon.large} color="white" />
-                      </View>
-                    </Marker>
-                  </Fragment>
-                );
-              })}
-            </MapView>
-
-            {/* Directions banner — persistent strip, not a blocking overlay, so the route stays visible underneath it */}
-            {destination && (
+              <View style={[styles.headingCone, { borderBottomColor: colors.accent }]} />
               <View
                 style={[
-                  styles.directionsBanner,
-                  { backgroundColor: colors.surface, borderColor: colors.hairline, borderRadius: radius.card, padding: spacing.cardPadding },
-                ]}
-              >
-                <View style={[styles.directionsBannerText, { gap: spacing.scale[3] }]}>
-                  <Ionicons name="navigate" size={sizing.icon.medium} color={colors.accent} />
-                  <View style={{ flex: 1 }}>
-                    <RText variant="bodyEmphasis" color={colors.ink}>
-                      Directions to {destination.name}
-                    </RText>
-                    <RText variant="caption" color={colors.ink3}>
-                      {routeInfo
-                        ? `${routeInfo.distanceKm.toFixed(1)} km · ${Math.round(routeInfo.durationMin)} min drive`
-                        : directionsFailed
-                        ? `Couldn't get a route — ${distanceKm(region, destination).toFixed(1)} km away, straight line`
-                        : GOOGLE_DIRECTIONS_KEY
-                        ? 'Finding route…'
-                        : `${distanceKm(region, destination).toFixed(1)} km away, straight line`}
-                    </RText>
-                  </View>
-                </View>
-                {directionSteps.length > 0 && (
-                  <Pressable
-                    style={[
-                      styles.directionsCloseButton,
-                      { width: sizing.touchTarget.preferredPrimary, height: sizing.touchTarget.preferredPrimary },
-                    ]}
-                    onPress={() => setStepSheetDismissed((prev) => !prev)}
-                    accessibilityLabel={stepSheetDismissed ? 'Show step-by-step directions' : 'Hide step-by-step directions'}
-                  >
-                    <Ionicons name="list" size={sizing.icon.medium} color={colors.ink2} />
-                  </Pressable>
-                )}
-                <Pressable
-                  style={[
-                    styles.directionsCloseButton,
-                    { width: sizing.touchTarget.preferredPrimary, height: sizing.touchTarget.preferredPrimary },
-                  ]}
-                  onPress={handleClearDirections}
-                  accessibilityLabel="Clear directions"
-                >
-                  <Ionicons name="close" size={sizing.icon.medium} color={colors.ink3} />
-                </Pressable>
-              </View>
-            )}
-
-            {/* Current-step bottom sheet — docked above the map, not a blocking
-                overlay, so both personas can keep seeing the map and their
-                position while reading the next instruction. */}
-            {destination && directionSteps.length > 0 && !stepSheetDismissed && (
-              <View
-                style={[
-                  styles.stepSheet,
+                  styles.userLocationDot,
                   {
-                    bottom: BASE_BOTTOM + sizing.touchTarget.preferredPrimary + BUTTON_GAP,
-                    backgroundColor: colors.surface,
-                    borderColor: colors.hairline,
-                    borderRadius: radius.card,
-                    padding: spacing.cardPadding,
-                    gap: spacing.scale[3],
+                    width: sizing.icon.large,
+                    height: sizing.icon.large,
+                    borderRadius: sizing.icon.large / 2,
+                    backgroundColor: colors.accent,
+                    borderColor: colors.surface,
                   },
                 ]}
-              >
-                <View style={styles.stepSheetHeader}>
-                  <RText variant="caption" color={colors.ink3}>
-                    Step {currentStepIndex + 1} of {directionSteps.length}
-                  </RText>
-                  <Pressable
-                    style={[
-                      styles.stepSheetCloseButton,
-                      { width: sizing.touchTarget.preferredPrimary, height: sizing.touchTarget.preferredPrimary },
-                    ]}
-                    onPress={() => setStepSheetDismissed(true)}
-                    accessibilityLabel="Hide step-by-step panel"
-                  >
-                    <Ionicons name="chevron-down" size={sizing.icon.medium} color={colors.ink3} />
-                  </Pressable>
-                </View>
+              />
+            </View>
+          </View>
+        </Marker>
 
-                <RText variant="bodyEmphasis" color={colors.ink}>
-                  {directionSteps[currentStepIndex].instruction}
-                </RText>
-                <RText variant="secondary" color={colors.ink3}>
-                  {directionSteps[currentStepIndex].distance}
-                  {directionSteps[currentStepIndex].distance && directionSteps[currentStepIndex].duration ? ' · ' : ''}
-                  {directionSteps[currentStepIndex].duration}
-                </RText>
-
-                <View style={[styles.stepSheetNav, { gap: spacing.scale[3] }]}>
-                  <Pressable
-                    style={[
-                      styles.stepNavButton,
-                      {
-                        minHeight: sizing.touchTarget.preferredPrimary,
-                        borderRadius: radius.lg,
-                        backgroundColor: colors.surface2,
-                        opacity: currentStepIndex === 0 ? 0.4 : 1,
-                      },
-                    ]}
-                    onPress={() => setCurrentStepIndex((i) => Math.max(0, i - 1))}
-                    disabled={currentStepIndex === 0}
-                    accessibilityLabel="Previous step"
-                  >
-                    <Ionicons name="chevron-back" size={sizing.icon.medium} color={colors.ink} />
-                  </Pressable>
-                  <Pressable
-                    style={[
-                      styles.stepNavButton,
-                      {
-                        flex: 1,
-                        minHeight: sizing.touchTarget.preferredPrimary,
-                        borderRadius: radius.lg,
-                        backgroundColor: colors.ink,
-                        opacity: currentStepIndex === directionSteps.length - 1 ? 0.4 : 1,
-                      },
-                    ]}
-                    onPress={() => setCurrentStepIndex((i) => Math.min(directionSteps.length - 1, i + 1))}
-                    disabled={currentStepIndex === directionSteps.length - 1}
-                    accessibilityLabel="Next step"
-                  >
-                    <RText variant="bodyEmphasis" color={colors.bg}>
-                      {currentStepIndex === directionSteps.length - 1 ? "You've arrived" : 'Next step'}
-                    </RText>
-                    {currentStepIndex < directionSteps.length - 1 && (
-                      <Ionicons name="chevron-forward" size={sizing.icon.medium} color={colors.bg} />
-                    )}
-                  </Pressable>
-                </View>
-
-                <Pressable onPress={openSteps} accessibilityRole="button" accessibilityLabel="View full step list">
-                  <RText variant="caption" color={colors.ink2} style={{ textAlign: 'center' }}>
-                    View full list
-                  </RText>
-                </Pressable>
+        {destination && (
+          <>
+            {(() => {
+              const routePoints =
+                routeCoordinates.length > 0
+                  ? routeCoordinates
+                  : [
+                      { latitude: region.latitude, longitude: region.longitude },
+                      { latitude: destination.latitude, longitude: destination.longitude },
+                    ];
+              return (
+                <>
+                  {/* White casing underneath so the route reads clearly against busy map detail */}
+                  <Polyline coordinates={routePoints} strokeColor="#FFFFFF" strokeWidth={8} />
+                  <Polyline coordinates={routePoints} strokeColor={colors.accent} strokeWidth={4} />
+                </>
+              );
+            })()}
+            <Marker coordinate={{ latitude: destination.latitude, longitude: destination.longitude }}>
+              <View style={[styles.destinationMarker, { backgroundColor: colors.accent }]}>
+                <Ionicons name="flag" size={sizing.icon.medium} color="white" />
               </View>
-            )}
+            </Marker>
+          </>
+        )}
 
-            {/* Turn-by-turn steps overlay */}
-            {stepsOpen && directionSteps.length > 0 && destination && (
+        {activeHazards.map((hazard) => {
+          const style = HAZARD_STYLES[hazard.type];
+          // Simple map: every hazard looks the same at a glance —
+          // still identified precisely once opened via the detail panel.
+          const displayTheme = preferences.simpleMap ? SIMPLE_HAZARD_THEME : style.theme;
+          const displayIcon = preferences.simpleMap ? SIMPLE_HAZARD_ICON : style.icon;
+          return (
+            <Fragment key={hazard.id}>
+              <Circle
+                center={{ latitude: hazard.lat, longitude: hazard.long }}
+                radius={hazard.effectRadius}
+                strokeColor={toRgba(displayTheme, 0.9)}
+                fillColor={toRgba(displayTheme, 0.18)}
+                strokeWidth={4}
+              />
+              <Marker
+                coordinate={{ latitude: hazard.lat, longitude: hazard.long }}
+                onPress={() => openHazard(hazard)}
+                tracksViewChanges={!iconsReady}
+              >
+                <View
+                  style={[
+                    styles.hazardMarker,
+                    {
+                      width: sizing.avatar.large,
+                      height: sizing.avatar.large,
+                      borderRadius: sizing.avatar.large / 2,
+                      backgroundColor: toRgba(displayTheme, 1),
+                    },
+                  ]}
+                >
+                  <MaterialCommunityIcons name={displayIcon} size={sizing.icon.large} color="white" />
+                </View>
+              </Marker>
+            </Fragment>
+          );
+        })}
+      </MapView>
+
+      {/* Floating top stack: header, then directions banner below it — stacked
+          via normal flow inside one positioned container, so there's no
+          fragile pixel math for where the banner sits under the header. */}
+      <View style={[styles.topStack, { top: insets.top + 12 }]}>
+        <View
+          style={[
+            styles.headerRow,
+            { backgroundColor: colors.surface, borderColor: colors.hairline, borderRadius: radius.card, padding: spacing.cardPadding },
+          ]}
+        >
+          <View style={styles.headerText}>
+            <RText variant="eyebrowLabel" color={colors.ink3}>
+              MAP
+            </RText>
+            <View style={styles.locationRow}>
+              <Ionicons name="location" size={16} color={colors.ink} />
+              <RText variant="bodyEmphasis" color={colors.ink}>
+                {placeLabel ?? 'Locating…'}
+              </RText>
+            </View>
+          </View>
+          <View
+            style={[
+              styles.avatar,
+              {
+                width: sizing.avatar.medium,
+                height: sizing.avatar.medium,
+                borderRadius: sizing.avatar.medium / 2,
+                backgroundColor: colors.ink,
+                borderColor: colors.hairline,
+              },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Your profile"
+          >
+            <RText variant="secondary" color={colors.bg}>
+              SL
+            </RText>
+          </View>
+        </View>
+
+        {/* Directions banner — persistent strip, not a blocking overlay, so the route stays visible underneath it */}
+        {destination && (
+          <View
+            style={[
+              styles.directionsBanner,
+              { backgroundColor: colors.surface, borderColor: colors.hairline, borderRadius: radius.card, padding: spacing.cardPadding },
+            ]}
+          >
+            <View style={[styles.directionsBannerText, { gap: spacing.scale[3] }]}>
+              <Ionicons name="navigate" size={sizing.icon.medium} color={colors.accent} />
+              <View style={{ flex: 1 }}>
+                <RText variant="bodyEmphasis" color={colors.ink}>
+                  Directions to {destination.name}
+                </RText>
+                <RText variant="caption" color={colors.ink3}>
+                  {routeInfo
+                    ? `${routeInfo.distanceKm.toFixed(1)} km · ${Math.round(routeInfo.durationMin)} min drive`
+                    : directionsFailed
+                    ? `Couldn't get a route — ${distanceKm(region, destination).toFixed(1)} km away, straight line`
+                    : GOOGLE_DIRECTIONS_KEY
+                    ? 'Finding route…'
+                    : `${distanceKm(region, destination).toFixed(1)} km away, straight line`}
+                </RText>
+              </View>
+            </View>
+            {directionSteps.length > 0 && (
+              <Pressable
+                style={[
+                  styles.directionsCloseButton,
+                  { width: sizing.touchTarget.preferredPrimary, height: sizing.touchTarget.preferredPrimary },
+                ]}
+                onPress={() => setStepSheetDismissed((prev) => !prev)}
+                accessibilityLabel={stepSheetDismissed ? 'Show step-by-step directions' : 'Hide step-by-step directions'}
+              >
+                <Ionicons name="list" size={sizing.icon.medium} color={colors.ink2} />
+              </Pressable>
+            )}
+            <Pressable
+              style={[
+                styles.directionsCloseButton,
+                { width: sizing.touchTarget.preferredPrimary, height: sizing.touchTarget.preferredPrimary },
+              ]}
+              onPress={handleClearDirections}
+              accessibilityLabel="Clear directions"
+            >
+              <Ionicons name="close" size={sizing.icon.medium} color={colors.ink3} />
+            </Pressable>
+          </View>
+        )}
+      </View>
+
+      {/* Current-step bottom sheet — docked above the map, not a blocking
+          overlay, so both personas can keep seeing the map and their
+          position while reading the next instruction. */}
+      {destination && directionSteps.length > 0 && !stepSheetDismissed && (
+        <View
+          style={[
+            styles.stepSheet,
+            {
+              bottom: BASE_BOTTOM + insets.bottom + sizing.touchTarget.preferredPrimary + BUTTON_GAP,
+              backgroundColor: colors.surface,
+              borderColor: colors.hairline,
+              borderRadius: radius.card,
+              padding: spacing.cardPadding,
+              gap: spacing.scale[3],
+            },
+          ]}
+        >
+          <View style={styles.stepSheetHeader}>
+            <RText variant="caption" color={colors.ink3}>
+              Step {currentStepIndex + 1} of {directionSteps.length}
+            </RText>
+            <Pressable
+              style={[
+                styles.stepSheetCloseButton,
+                { width: sizing.touchTarget.preferredPrimary, height: sizing.touchTarget.preferredPrimary },
+              ]}
+              onPress={() => setStepSheetDismissed(true)}
+              accessibilityLabel="Hide step-by-step panel"
+            >
+              <Ionicons name="chevron-down" size={sizing.icon.medium} color={colors.ink3} />
+            </Pressable>
+          </View>
+
+          <RText variant="bodyEmphasis" color={colors.ink}>
+            {directionSteps[currentStepIndex].instruction}
+          </RText>
+          <RText variant="secondary" color={colors.ink3}>
+            {directionSteps[currentStepIndex].distance}
+            {directionSteps[currentStepIndex].distance && directionSteps[currentStepIndex].duration ? ' · ' : ''}
+            {directionSteps[currentStepIndex].duration}
+          </RText>
+
+          <View style={[styles.stepSheetNav, { gap: spacing.scale[3] }]}>
+            <Pressable
+              style={[
+                styles.stepNavButton,
+                {
+                  minHeight: sizing.touchTarget.preferredPrimary,
+                  borderRadius: radius.lg,
+                  backgroundColor: colors.surface2,
+                  opacity: currentStepIndex === 0 ? 0.4 : 1,
+                },
+              ]}
+              onPress={() => setCurrentStepIndex((i) => Math.max(0, i - 1))}
+              disabled={currentStepIndex === 0}
+              accessibilityLabel="Previous step"
+            >
+              <Ionicons name="chevron-back" size={sizing.icon.medium} color={colors.ink} />
+            </Pressable>
+            <Pressable
+              style={[
+                styles.stepNavButton,
+                {
+                  flex: 1,
+                  minHeight: sizing.touchTarget.preferredPrimary,
+                  borderRadius: radius.lg,
+                  backgroundColor: colors.ink,
+                  opacity: currentStepIndex === directionSteps.length - 1 ? 0.4 : 1,
+                },
+              ]}
+              onPress={() => setCurrentStepIndex((i) => Math.min(directionSteps.length - 1, i + 1))}
+              disabled={currentStepIndex === directionSteps.length - 1}
+              accessibilityLabel="Next step"
+            >
+              <RText variant="bodyEmphasis" color={colors.bg}>
+                {currentStepIndex === directionSteps.length - 1 ? "You've arrived" : 'Next step'}
+              </RText>
+              {currentStepIndex < directionSteps.length - 1 && (
+                <Ionicons name="chevron-forward" size={sizing.icon.medium} color={colors.bg} />
+              )}
+            </Pressable>
+          </View>
+
+          <Pressable onPress={openSteps} accessibilityRole="button" accessibilityLabel="View full step list">
+            <RText variant="caption" color={colors.ink2} style={{ textAlign: 'center' }}>
+              View full list
+            </RText>
+          </Pressable>
+        </View>
+      )}
+
+      {/* Turn-by-turn steps overlay */}
+      {stepsOpen && directionSteps.length > 0 && destination && (
               <RCenteredOverlay title={`Directions to ${destination.name}`} onDismiss={() => setStepsOpen(false)}>
-                <ScrollView showsVerticalScrollIndicator={false}>
+                <ScrollView showsVerticalScrollIndicator={false} nestedScrollEnabled>
                   <View style={{ gap: spacing.scale[4] }}>
                     {directionSteps.map((step, i) => (
                       <View key={i} style={{ flexDirection: 'row', gap: spacing.scale[3] }}>
@@ -788,7 +777,7 @@ export function MapScreen({ hazards, plans, onViewPlanForHazard, destination, on
             {/* Hazard legend overlay — no legend needed in simple map mode, since every hazard looks the same */}
             {legendOpen && !preferences.simpleMap && (
               <RCenteredOverlay title="Hazard types" onDismiss={() => setLegendOpen(false)} maxWidth={340}>
-                <ScrollView style={styles.legendScroll} showsVerticalScrollIndicator={false}>
+                <ScrollView style={styles.legendScroll} showsVerticalScrollIndicator={false} nestedScrollEnabled>
                   {(Object.keys(HAZARD_STYLES) as HazardType[]).map((type) => {
                     const style = HAZARD_STYLES[type];
                     return (
@@ -869,74 +858,71 @@ export function MapScreen({ hazards, plans, onViewPlanForHazard, destination, on
               </RCenteredOverlay>
             )}
 
-            {/* Centralized control cluster — legend, zoom out/in, locate */}
-            <View style={styles.controlCluster}>
-              {!preferences.simpleMap && (
-                <Pressable
-                  style={[
-                    styles.controlButton,
-                    {
-                      width: sizing.touchTarget.preferredPrimary,
-                      height: sizing.touchTarget.preferredPrimary,
-                      borderRadius: sizing.touchTarget.preferredPrimary / 2,
-                      backgroundColor: colors.surface,
-                    },
-                  ]}
-                  onPress={toggleLegend}
-                  accessibilityLabel={legendOpen ? 'Hide hazard legend' : 'Show hazard legend'}
-                >
-                  <Ionicons name="list" size={24} color={colors.ink} />
-                </Pressable>
-              )}
-              <Pressable
-                style={[
-                  styles.controlButton,
-                  {
-                    width: sizing.touchTarget.preferredPrimary,
-                    height: sizing.touchTarget.preferredPrimary,
-                    borderRadius: sizing.touchTarget.preferredPrimary / 2,
-                    backgroundColor: colors.surface,
-                  },
-                ]}
-                onPress={zoomOut}
-                accessibilityLabel="Zoom out"
-              >
-                <Ionicons name="remove" size={28} color={colors.ink} />
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.controlButton,
-                  {
-                    width: sizing.touchTarget.preferredPrimary,
-                    height: sizing.touchTarget.preferredPrimary,
-                    borderRadius: sizing.touchTarget.preferredPrimary / 2,
-                    backgroundColor: colors.surface,
-                  },
-                ]}
-                onPress={zoomIn}
-                accessibilityLabel="Zoom in"
-              >
-                <Ionicons name="add" size={28} color={colors.ink} />
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.controlButton,
-                  {
-                    width: sizing.touchTarget.preferredPrimary,
-                    height: sizing.touchTarget.preferredPrimary,
-                    borderRadius: sizing.touchTarget.preferredPrimary / 2,
-                    backgroundColor: colors.surface,
-                  },
-                ]}
-                onPress={recenter}
-                accessibilityLabel="Center on my location"
-              >
-                <Ionicons name="locate" size={28} color={colors.ink} />
-              </Pressable>
-            </View>
-          </View>
-        </ScrollView>
-      </SafeAreaView>
+      {/* Centralized control cluster — legend, zoom out/in, locate */}
+      <View style={[styles.controlCluster, { bottom: BASE_BOTTOM + insets.bottom }]}>
+        {!preferences.simpleMap && (
+          <Pressable
+            style={[
+              styles.controlButton,
+              {
+                width: sizing.touchTarget.preferredPrimary,
+                height: sizing.touchTarget.preferredPrimary,
+                borderRadius: sizing.touchTarget.preferredPrimary / 2,
+                backgroundColor: colors.surface,
+              },
+            ]}
+            onPress={toggleLegend}
+            accessibilityLabel={legendOpen ? 'Hide hazard legend' : 'Show hazard legend'}
+          >
+            <Ionicons name="list" size={24} color={colors.ink} />
+          </Pressable>
+        )}
+        <Pressable
+          style={[
+            styles.controlButton,
+            {
+              width: sizing.touchTarget.preferredPrimary,
+              height: sizing.touchTarget.preferredPrimary,
+              borderRadius: sizing.touchTarget.preferredPrimary / 2,
+              backgroundColor: colors.surface,
+            },
+          ]}
+          onPress={zoomOut}
+          accessibilityLabel="Zoom out"
+        >
+          <Ionicons name="remove" size={28} color={colors.ink} />
+        </Pressable>
+        <Pressable
+          style={[
+            styles.controlButton,
+            {
+              width: sizing.touchTarget.preferredPrimary,
+              height: sizing.touchTarget.preferredPrimary,
+              borderRadius: sizing.touchTarget.preferredPrimary / 2,
+              backgroundColor: colors.surface,
+            },
+          ]}
+          onPress={zoomIn}
+          accessibilityLabel="Zoom in"
+        >
+          <Ionicons name="add" size={28} color={colors.ink} />
+        </Pressable>
+        <Pressable
+          style={[
+            styles.controlButton,
+            {
+              width: sizing.touchTarget.preferredPrimary,
+              height: sizing.touchTarget.preferredPrimary,
+              borderRadius: sizing.touchTarget.preferredPrimary / 2,
+              backgroundColor: colors.surface,
+            },
+          ]}
+          onPress={recenter}
+          accessibilityLabel="Center on my location"
+        >
+          <Ionicons name="locate" size={28} color={colors.ink} />
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -949,14 +935,21 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
-  flex: {
-    flex: 1,
+  topStack: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    gap: 12,
   },
-  content: {},
   headerRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
+    borderWidth: 1,
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
   },
   headerText: {
     gap: 6,
@@ -970,14 +963,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  mapContainer: {
-    borderRadius: 0,
-    overflow: 'hidden',
-    marginTop: 16,
-  },
-  map: {
-    flex: 1,
   },
   hazardMarker: {
     alignItems: 'center',
@@ -993,10 +978,6 @@ const styles = StyleSheet.create({
     borderColor: 'white',
   },
   directionsBanner: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    right: 16,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
