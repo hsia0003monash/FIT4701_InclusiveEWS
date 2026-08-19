@@ -6,11 +6,22 @@ import * as Location from 'expo-location';
 import MapView, { Circle, Marker, Polyline } from 'react-native-maps';
 
 import { RButton } from '../components/RButton';
+import { RToggleRow } from '../components/RToggleRow';
 import { RCenteredOverlay } from '../components/RCenteredOverlay';
+import { ROptionSelector } from '../components/ROptionSelector';
 import { RText } from '../components/RText';
 import { useTheme } from '../theme/useTheme';
 import { Hazard, HazardType, HAZARD_STYLES, toRgba } from '../data/hazards';
 import type { EvacuationPlan, MapDestination } from '../data/plans';
+import { ALL_TRAVEL_MODES, TRAVEL_MODE_META, TravelMode } from '../data/travel';
+import {
+  MAP_BUTTON_POSITION_OPTIONS,
+  MAP_BUTTON_SIZE_OPTIONS,
+  MAP_BUTTON_SIZE_SCALE,
+  MAP_MARKER_SIZE_OPTIONS,
+  MAP_MARKER_SIZE_SCALE,
+  usePreferences,
+} from '../theme/PreferencesContext';
 import { resolvePlanForHazardType } from '../data/plans';
 
 // Set in .env — see .env.example. Falls back to a straight-line preview
@@ -40,6 +51,10 @@ interface MapScreenProps {
    * EXPO_PUBLIC_GOOGLE_MAPS_KEY is set, or a straight-line preview otherwise. */
   destination?: MapDestination | null;
   onClearDestination?: () => void;
+  /** Set by App.tsx when the user taps "Customize map appearance" on
+   * Settings — opens the map settings overlay immediately on arrival. */
+  openSettingsOnMount?: boolean;
+  onSettingsOnMountHandled?: () => void;
 }
 
 // Standard Google Maps "dark mode" style JSON — only takes effect when the
@@ -139,8 +154,18 @@ function decodePolyline(encoded: string): { latitude: number; longitude: number 
 // Component
 // ---------------------------------------------------------------------------
 
-export function MapScreen({ hazards, plans, onViewPlanForHazard, destination, onClearDestination }: MapScreenProps) {
-  const { colors, severity, spacing, radius, sizing, scheme, preferences } = useTheme();
+export function MapScreen({
+  hazards,
+  plans,
+  onViewPlanForHazard,
+  destination,
+  onClearDestination,
+  openSettingsOnMount,
+  onSettingsOnMountHandled,
+}: MapScreenProps) {
+  const theme = useTheme();
+  const { colors, severity, spacing, radius, sizing, scheme, preferences } = theme;
+  const { setPreferences } = usePreferences();
   const insets = useSafeAreaInsets();
   const [placeLabel, setPlaceLabel] = useState<string | null>(null);
   const [selectedHazard, setSelectedHazard] = useState<Hazard | null>(null);
@@ -153,6 +178,44 @@ export function MapScreen({ hazards, plans, onViewPlanForHazard, destination, on
   const [routeCoordinates, setRouteCoordinates] = useState<{ latitude: number; longitude: number }[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [stepSheetDismissed, setStepSheetDismissed] = useState(false);
+  const [mapSettingsOpen, setMapSettingsOpen] = useState(false);
+  // Modes the user has marked as usable (Map settings overlay below). Always
+  // at least one — handleToggleModeUsable refuses to disable every mode.
+  const availableTravelModes = ALL_TRAVEL_MODES.filter((m) => !preferences.disabledTravelModes.includes(m));
+  const markerScale = MAP_MARKER_SIZE_SCALE[preferences.mapMarkerSize];
+  const buttonScale = MAP_BUTTON_SIZE_SCALE[preferences.mapButtonSize];
+  const buttonSize = sizing.touchTarget.preferredPrimary * buttonScale;
+  const isSideLayout = preferences.mapButtonPosition === 'side-right';
+
+  // Toggling a mode off marks it as unusable (e.g. no car). Always leaves at
+  // least one mode enabled, and reassigns the default automatically if the
+  // mode being disabled was the current default.
+  const handleToggleModeUsable = (mode: TravelMode, usable: boolean) => {
+    setPreferences((prev) => {
+      const disabledTravelModes = usable
+        ? prev.disabledTravelModes.filter((m) => m !== mode)
+        : [...prev.disabledTravelModes, mode];
+
+      if (disabledTravelModes.length === ALL_TRAVEL_MODES.length) {
+        return prev; // refuse to disable every mode
+      }
+
+      const defaultTravelMode = disabledTravelModes.includes(prev.defaultTravelMode)
+        ? ALL_TRAVEL_MODES.find((m) => !disabledTravelModes.includes(m))!
+        : prev.defaultTravelMode;
+
+      return { ...prev, disabledTravelModes, defaultTravelMode };
+    });
+  };
+
+  // Kept across different destinations deliberately (not reset when
+  // `destination` changes) — if someone always walks, they shouldn't have to
+  // re-pick that every time they ask for directions somewhere new. Starts
+  // from the user's chosen default, falling back to the first available
+  // mode if that default has since become disabled.
+  const [travelMode, setTravelMode] = useState<TravelMode>(
+    availableTravelModes.includes(preferences.defaultTravelMode) ? preferences.defaultTravelMode : availableTravelModes[0] ?? 'driving'
+  );
 
   const activeHazards = hazards.filter((h) => h.status === 'active');
 
@@ -276,29 +339,49 @@ export function MapScreen({ hazards, plans, onViewPlanForHazard, destination, on
     });
   };
 
-  // Only one centered overlay (hazard card, legend, or turn-by-turn steps)
-  // should ever be open at once — opening one always closes the others,
-  // which matters especially for the restricted-field-of-view persona this
-  // screen is designed around.
+  // Only one centered overlay (hazard card, legend, turn-by-turn steps, or
+  // map settings) should ever be open at once — opening one always closes
+  // the others, which matters especially for the restricted-field-of-view
+  // persona this screen is designed around.
   const openHazard = (hazard: Hazard) => {
     setLegendOpen(false);
     setStepsOpen(false);
+    setMapSettingsOpen(false);
     setSelectedHazard(hazard);
   };
 
   const toggleLegend = () => {
     setSelectedHazard(null);
     setStepsOpen(false);
+    setMapSettingsOpen(false);
     setLegendOpen((prev) => !prev);
   };
 
   const openSteps = () => {
     setSelectedHazard(null);
     setLegendOpen(false);
+    setMapSettingsOpen(false);
     setStepsOpen(true);
   };
 
-  // Reset everything route-related as soon as the destination changes or is dismissed.
+  const toggleMapSettings = () => {
+    setSelectedHazard(null);
+    setLegendOpen(false);
+    setStepsOpen(false);
+    setMapSettingsOpen((prev) => !prev);
+  };
+
+  // Arriving here from "Customize map appearance" on Settings — open the
+  // overlay immediately rather than leaving the user to find the gear icon.
+  useEffect(() => {
+    if (!openSettingsOnMount) return;
+    setMapSettingsOpen(true);
+    onSettingsOnMountHandled?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openSettingsOnMount]);
+
+  // Reset everything route-related as soon as the destination or travel mode
+  // changes (or directions are dismissed) — a mode switch needs a fresh route.
   useEffect(() => {
     setRouteInfo(null);
     setDirectionSteps([]);
@@ -307,7 +390,7 @@ export function MapScreen({ hazards, plans, onViewPlanForHazard, destination, on
     setDirectionsFailed(false);
     setCurrentStepIndex(0);
     setStepSheetDismissed(false);
-  }, [destination]);
+  }, [destination, travelMode]);
 
   // Single Directions API request per route: the response already contains
   // the route geometry (an encoded polyline), total distance/duration, and
@@ -344,7 +427,7 @@ export function MapScreen({ hazards, plans, onViewPlanForHazard, destination, on
 
     (async () => {
       try {
-        const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${region.latitude},${region.longitude}&destination=${destination.latitude},${destination.longitude}&key=${GOOGLE_DIRECTIONS_KEY}`;
+        const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${region.latitude},${region.longitude}&destination=${destination.latitude},${destination.longitude}&mode=${travelMode}&key=${GOOGLE_DIRECTIONS_KEY}`;
         const response = await fetch(url);
         const data = await response.json();
         if (cancelled) return;
@@ -395,7 +478,7 @@ export function MapScreen({ hazards, plans, onViewPlanForHazard, destination, on
     return () => {
       cancelled = true;
     };
-  }, [destination, region, routeCoordinates.length, directionsFailed]);
+  }, [destination, region, routeCoordinates.length, directionsFailed, travelMode]);
 
   const handleClearDirections = () => {
     onClearDestination?.();
@@ -429,23 +512,35 @@ export function MapScreen({ hazards, plans, onViewPlanForHazard, destination, on
                 <ActivityIndicator size="small" color={colors.ink} />
               </View>
             </View>
-            <View
-              style={[
-                styles.avatar,
-                {
-                  width: sizing.avatar.medium,
-                  height: sizing.avatar.medium,
-                  borderRadius: sizing.avatar.medium / 2,
-                  backgroundColor: colors.ink,
-                  borderColor: colors.hairline,
-                },
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel="Your profile"
-            >
-              <RText variant="secondary" color={colors.bg}>
-                SL
-              </RText>
+            <View style={styles.headerRightControls}>
+              <Pressable
+                style={[
+                  styles.headerIconButton,
+                  { width: sizing.touchTarget.minimum, height: sizing.touchTarget.minimum },
+                ]}
+                onPress={toggleMapSettings}
+                accessibilityLabel="Map settings"
+              >
+                <Ionicons name="options-outline" size={20} color={colors.ink2} />
+              </Pressable>
+              <View
+                style={[
+                  styles.avatar,
+                  {
+                    width: sizing.avatar.medium,
+                    height: sizing.avatar.medium,
+                    borderRadius: sizing.avatar.medium / 2,
+                    backgroundColor: colors.ink,
+                    borderColor: colors.hairline,
+                  },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Your profile"
+              >
+                <RText variant="secondary" color={colors.bg}>
+                  SL
+                </RText>
+              </View>
             </View>
           </View>
         </View>
@@ -487,9 +582,9 @@ export function MapScreen({ hazards, plans, onViewPlanForHazard, destination, on
                 style={[
                   styles.userLocationDot,
                   {
-                    width: sizing.icon.large,
-                    height: sizing.icon.large,
-                    borderRadius: sizing.icon.large / 2,
+                    width: sizing.icon.large * markerScale,
+                    height: sizing.icon.large * markerScale,
+                    borderRadius: (sizing.icon.large * markerScale) / 2,
                     backgroundColor: colors.accent,
                     borderColor: colors.surface,
                   },
@@ -518,8 +613,18 @@ export function MapScreen({ hazards, plans, onViewPlanForHazard, destination, on
               );
             })()}
             <Marker coordinate={{ latitude: destination.latitude, longitude: destination.longitude }}>
-              <View style={[styles.destinationMarker, { backgroundColor: colors.accent }]}>
-                <Ionicons name="flag" size={sizing.icon.medium} color="white" />
+              <View
+                style={[
+                  styles.destinationMarker,
+                  {
+                    width: 40 * markerScale,
+                    height: 40 * markerScale,
+                    borderRadius: (40 * markerScale) / 2,
+                    backgroundColor: colors.accent,
+                  },
+                ]}
+              >
+                <Ionicons name="flag" size={sizing.icon.medium * markerScale} color="white" />
               </View>
             </Marker>
           </>
@@ -549,14 +654,14 @@ export function MapScreen({ hazards, plans, onViewPlanForHazard, destination, on
                   style={[
                     styles.hazardMarker,
                     {
-                      width: sizing.avatar.large,
-                      height: sizing.avatar.large,
-                      borderRadius: sizing.avatar.large / 2,
+                      width: sizing.avatar.large * markerScale,
+                      height: sizing.avatar.large * markerScale,
+                      borderRadius: (sizing.avatar.large * markerScale) / 2,
                       backgroundColor: toRgba(displayTheme, 1),
                     },
                   ]}
                 >
-                  <MaterialCommunityIcons name={displayIcon} size={sizing.icon.large} color="white" />
+                  <MaterialCommunityIcons name={displayIcon} size={sizing.icon.large * markerScale} color="white" />
                 </View>
               </Marker>
             </Fragment>
@@ -585,23 +690,35 @@ export function MapScreen({ hazards, plans, onViewPlanForHazard, destination, on
               </RText>
             </View>
           </View>
-          <View
-            style={[
-              styles.avatar,
-              {
-                width: sizing.avatar.medium,
-                height: sizing.avatar.medium,
-                borderRadius: sizing.avatar.medium / 2,
-                backgroundColor: colors.ink,
-                borderColor: colors.hairline,
-              },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Your profile"
-          >
-            <RText variant="secondary" color={colors.bg}>
-              SL
-            </RText>
+          <View style={styles.headerRightControls}>
+            <Pressable
+              style={[
+                styles.headerIconButton,
+                { width: sizing.touchTarget.minimum, height: sizing.touchTarget.minimum },
+              ]}
+              onPress={toggleMapSettings}
+              accessibilityLabel="Map settings"
+            >
+              <Ionicons name="options-outline" size={20} color={colors.ink2} />
+            </Pressable>
+            <View
+              style={[
+                styles.avatar,
+                {
+                  width: sizing.avatar.medium,
+                  height: sizing.avatar.medium,
+                  borderRadius: sizing.avatar.medium / 2,
+                  backgroundColor: colors.ink,
+                  borderColor: colors.hairline,
+                },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Your profile"
+            >
+              <RText variant="secondary" color={colors.bg}>
+                SL
+              </RText>
+            </View>
           </View>
         </View>
 
@@ -613,45 +730,79 @@ export function MapScreen({ hazards, plans, onViewPlanForHazard, destination, on
               { backgroundColor: colors.surface, borderColor: colors.hairline, borderRadius: radius.card, padding: spacing.cardPadding },
             ]}
           >
-            <View style={[styles.directionsBannerText, { gap: spacing.scale[3] }]}>
-              <Ionicons name="navigate" size={sizing.icon.medium} color={colors.accent} />
-              <View style={{ flex: 1 }}>
-                <RText variant="bodyEmphasis" color={colors.ink}>
-                  Directions to {destination.name}
-                </RText>
-                <RText variant="caption" color={colors.ink3}>
-                  {routeInfo
-                    ? `${routeInfo.distanceKm.toFixed(1)} km · ${Math.round(routeInfo.durationMin)} min drive`
-                    : directionsFailed
-                    ? `Couldn't get a route — ${distanceKm(region, destination).toFixed(1)} km away, straight line`
-                    : GOOGLE_DIRECTIONS_KEY
-                    ? 'Finding route…'
-                    : `${distanceKm(region, destination).toFixed(1)} km away, straight line`}
-                </RText>
+            <View style={styles.directionsBannerTopRow}>
+              <View style={[styles.directionsBannerText, { gap: spacing.scale[3] }]}>
+                <Ionicons name="navigate" size={sizing.icon.medium} color={colors.accent} />
+                <View style={{ flex: 1 }}>
+                  <RText variant="bodyEmphasis" color={colors.ink}>
+                    Directions to {destination.name}
+                  </RText>
+                  <RText variant="caption" color={colors.ink3}>
+                    {routeInfo
+                      ? `${routeInfo.distanceKm.toFixed(1)} km · ${Math.round(routeInfo.durationMin)} ${TRAVEL_MODE_META[travelMode].durationSuffix}`
+                      : directionsFailed
+                      ? `Couldn't get a route — ${distanceKm(region, destination).toFixed(1)} km away, straight line`
+                      : GOOGLE_DIRECTIONS_KEY
+                      ? 'Finding route…'
+                      : `${distanceKm(region, destination).toFixed(1)} km away, straight line`}
+                  </RText>
+                </View>
               </View>
-            </View>
-            {directionSteps.length > 0 && (
+              {directionSteps.length > 0 && (
+                <Pressable
+                  style={[
+                    styles.directionsCloseButton,
+                    { width: buttonSize, height: buttonSize },
+                  ]}
+                  onPress={() => setStepSheetDismissed((prev) => !prev)}
+                  accessibilityLabel={stepSheetDismissed ? 'Show step-by-step directions' : 'Hide step-by-step directions'}
+                >
+                  <Ionicons name="list" size={sizing.icon.medium * buttonScale} color={colors.ink2} />
+                </Pressable>
+              )}
               <Pressable
                 style={[
                   styles.directionsCloseButton,
-                  { width: sizing.touchTarget.preferredPrimary, height: sizing.touchTarget.preferredPrimary },
+                  { width: buttonSize, height: buttonSize },
                 ]}
-                onPress={() => setStepSheetDismissed((prev) => !prev)}
-                accessibilityLabel={stepSheetDismissed ? 'Show step-by-step directions' : 'Hide step-by-step directions'}
+                onPress={handleClearDirections}
+                accessibilityLabel="Clear directions"
               >
-                <Ionicons name="list" size={sizing.icon.medium} color={colors.ink2} />
+                <Ionicons name="close" size={sizing.icon.medium * buttonScale} color={colors.ink3} />
               </Pressable>
+            </View>
+
+            {GOOGLE_DIRECTIONS_KEY && availableTravelModes.length > 1 && (
+              <View style={[styles.travelModeRow, { gap: spacing.scale[2] }]}>
+                {availableTravelModes.map((mode) => {
+                  const meta = TRAVEL_MODE_META[mode];
+                  const selected = travelMode === mode;
+                  return (
+                    <Pressable
+                      key={mode}
+                      onPress={() => setTravelMode(mode)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      accessibilityLabel={meta.label}
+                      style={[
+                        styles.travelModeButton,
+                        {
+                          minHeight: sizing.touchTarget.minimum * buttonScale,
+                          borderRadius: radius.lg,
+                          backgroundColor: selected ? colors.ink : colors.surface2,
+                          gap: spacing.scale[1],
+                        },
+                      ]}
+                    >
+                      <Ionicons name={meta.icon} size={sizing.icon.small * buttonScale} color={selected ? colors.bg : colors.ink2} />
+                      <RText variant="caption" color={selected ? colors.bg : colors.ink2}>
+                        {meta.label}
+                      </RText>
+                    </Pressable>
+                  );
+                })}
+              </View>
             )}
-            <Pressable
-              style={[
-                styles.directionsCloseButton,
-                { width: sizing.touchTarget.preferredPrimary, height: sizing.touchTarget.preferredPrimary },
-              ]}
-              onPress={handleClearDirections}
-              accessibilityLabel="Clear directions"
-            >
-              <Ionicons name="close" size={sizing.icon.medium} color={colors.ink3} />
-            </Pressable>
           </View>
         )}
       </View>
@@ -664,7 +815,7 @@ export function MapScreen({ hazards, plans, onViewPlanForHazard, destination, on
           style={[
             styles.stepSheet,
             {
-              bottom: BASE_BOTTOM + insets.bottom + sizing.touchTarget.preferredPrimary + BUTTON_GAP,
+              bottom: BASE_BOTTOM + insets.bottom + buttonSize + BUTTON_GAP,
               backgroundColor: colors.surface,
               borderColor: colors.hairline,
               borderRadius: radius.card,
@@ -680,12 +831,12 @@ export function MapScreen({ hazards, plans, onViewPlanForHazard, destination, on
             <Pressable
               style={[
                 styles.stepSheetCloseButton,
-                { width: sizing.touchTarget.preferredPrimary, height: sizing.touchTarget.preferredPrimary },
+                { width: buttonSize, height: buttonSize },
               ]}
               onPress={() => setStepSheetDismissed(true)}
               accessibilityLabel="Hide step-by-step panel"
             >
-              <Ionicons name="chevron-down" size={sizing.icon.medium} color={colors.ink3} />
+              <Ionicons name="chevron-down" size={sizing.icon.medium * buttonScale} color={colors.ink3} />
             </Pressable>
           </View>
 
@@ -703,7 +854,7 @@ export function MapScreen({ hazards, plans, onViewPlanForHazard, destination, on
               style={[
                 styles.stepNavButton,
                 {
-                  minHeight: sizing.touchTarget.preferredPrimary,
+                  minHeight: buttonSize,
                   borderRadius: radius.lg,
                   backgroundColor: colors.surface2,
                   opacity: currentStepIndex === 0 ? 0.4 : 1,
@@ -713,14 +864,14 @@ export function MapScreen({ hazards, plans, onViewPlanForHazard, destination, on
               disabled={currentStepIndex === 0}
               accessibilityLabel="Previous step"
             >
-              <Ionicons name="chevron-back" size={sizing.icon.medium} color={colors.ink} />
+              <Ionicons name="chevron-back" size={sizing.icon.medium * buttonScale} color={colors.ink} />
             </Pressable>
             <Pressable
               style={[
                 styles.stepNavButton,
                 {
                   flex: 1,
-                  minHeight: sizing.touchTarget.preferredPrimary,
+                  minHeight: buttonSize,
                   borderRadius: radius.lg,
                   backgroundColor: colors.ink,
                   opacity: currentStepIndex === directionSteps.length - 1 ? 0.4 : 1,
@@ -734,7 +885,7 @@ export function MapScreen({ hazards, plans, onViewPlanForHazard, destination, on
                 {currentStepIndex === directionSteps.length - 1 ? "You've arrived" : 'Next step'}
               </RText>
               {currentStepIndex < directionSteps.length - 1 && (
-                <Ionicons name="chevron-forward" size={sizing.icon.medium} color={colors.bg} />
+                <Ionicons name="chevron-forward" size={sizing.icon.medium * buttonScale} color={colors.bg} />
               )}
             </Pressable>
           </View>
@@ -746,6 +897,88 @@ export function MapScreen({ hazards, plans, onViewPlanForHazard, destination, on
           </Pressable>
         </View>
       )}
+
+      {/* Centralized control cluster — legend, zoom out/in, locate. Rendered
+          before the overlays below so they always paint on top of it,
+          rather than the buttons poking through an open overlay. */}
+      <View
+        style={[
+          isSideLayout ? styles.sideCluster : styles.controlCluster,
+          isSideLayout
+            ? {
+                top: insets.top + 90,
+                bottom: BASE_BOTTOM + insets.bottom,
+                right: 16,
+              }
+            : {
+                bottom: BASE_BOTTOM + insets.bottom,
+                justifyContent: 'center',
+              },
+        ]}
+      >
+        {!preferences.simpleMap && (
+          <Pressable
+            style={[
+              styles.controlButton,
+              {
+                width: buttonSize,
+                height: buttonSize,
+                borderRadius: buttonSize / 2,
+                backgroundColor: colors.surface,
+              },
+            ]}
+            onPress={toggleLegend}
+            accessibilityLabel={legendOpen ? 'Hide hazard legend' : 'Show hazard legend'}
+          >
+            <Ionicons name="list" size={24 * buttonScale} color={colors.ink} />
+          </Pressable>
+        )}
+        <Pressable
+          style={[
+            styles.controlButton,
+            {
+              width: buttonSize,
+              height: buttonSize,
+              borderRadius: buttonSize / 2,
+              backgroundColor: colors.surface,
+            },
+          ]}
+          onPress={zoomOut}
+          accessibilityLabel="Zoom out"
+        >
+          <Ionicons name="remove" size={28 * buttonScale} color={colors.ink} />
+        </Pressable>
+        <Pressable
+          style={[
+            styles.controlButton,
+            {
+              width: buttonSize,
+              height: buttonSize,
+              borderRadius: buttonSize / 2,
+              backgroundColor: colors.surface,
+            },
+          ]}
+          onPress={zoomIn}
+          accessibilityLabel="Zoom in"
+        >
+          <Ionicons name="add" size={28 * buttonScale} color={colors.ink} />
+        </Pressable>
+        <Pressable
+          style={[
+            styles.controlButton,
+            {
+              width: buttonSize,
+              height: buttonSize,
+              borderRadius: buttonSize / 2,
+              backgroundColor: colors.surface,
+            },
+          ]}
+          onPress={recenter}
+          accessibilityLabel="Center on my location"
+        >
+          <Ionicons name="locate" size={28 * buttonScale} color={colors.ink} />
+        </Pressable>
+      </View>
 
       {/* Turn-by-turn steps overlay */}
       {stepsOpen && directionSteps.length > 0 && destination && (
@@ -858,71 +1091,97 @@ export function MapScreen({ hazards, plans, onViewPlanForHazard, destination, on
               </RCenteredOverlay>
             )}
 
-      {/* Centralized control cluster — legend, zoom out/in, locate */}
-      <View style={[styles.controlCluster, { bottom: BASE_BOTTOM + insets.bottom }]}>
-        {!preferences.simpleMap && (
-          <Pressable
-            style={[
-              styles.controlButton,
-              {
-                width: sizing.touchTarget.preferredPrimary,
-                height: sizing.touchTarget.preferredPrimary,
-                borderRadius: sizing.touchTarget.preferredPrimary / 2,
-                backgroundColor: colors.surface,
-              },
-            ]}
-            onPress={toggleLegend}
-            accessibilityLabel={legendOpen ? 'Hide hazard legend' : 'Show hazard legend'}
-          >
-            <Ionicons name="list" size={24} color={colors.ink} />
-          </Pressable>
-        )}
-        <Pressable
-          style={[
-            styles.controlButton,
-            {
-              width: sizing.touchTarget.preferredPrimary,
-              height: sizing.touchTarget.preferredPrimary,
-              borderRadius: sizing.touchTarget.preferredPrimary / 2,
-              backgroundColor: colors.surface,
-            },
-          ]}
-          onPress={zoomOut}
-          accessibilityLabel="Zoom out"
-        >
-          <Ionicons name="remove" size={28} color={colors.ink} />
-        </Pressable>
-        <Pressable
-          style={[
-            styles.controlButton,
-            {
-              width: sizing.touchTarget.preferredPrimary,
-              height: sizing.touchTarget.preferredPrimary,
-              borderRadius: sizing.touchTarget.preferredPrimary / 2,
-              backgroundColor: colors.surface,
-            },
-          ]}
-          onPress={zoomIn}
-          accessibilityLabel="Zoom in"
-        >
-          <Ionicons name="add" size={28} color={colors.ink} />
-        </Pressable>
-        <Pressable
-          style={[
-            styles.controlButton,
-            {
-              width: sizing.touchTarget.preferredPrimary,
-              height: sizing.touchTarget.preferredPrimary,
-              borderRadius: sizing.touchTarget.preferredPrimary / 2,
-              backgroundColor: colors.surface,
-            },
-          ]}
-          onPress={recenter}
-          accessibilityLabel="Center on my location"
-        >
-          <Ionicons name="locate" size={28} color={colors.ink} />
-        </Pressable>
-      </View>
+      {/* Map settings overlay — marker/button size & position, simple map,
+          and travel mode preferences. Lives here (not just in the global
+          Settings screen) since these are only meaningful while actually
+          looking at the map. */}
+      {mapSettingsOpen && (
+        <RCenteredOverlay title="Map settings" onDismiss={() => setMapSettingsOpen(false)}>
+          <ScrollView showsVerticalScrollIndicator={false} nestedScrollEnabled>
+            <View style={{ gap: spacing.scale[4] }}>
+              <View style={{ gap: spacing.scale[2] }}>
+                <RText variant="caption" color={colors.ink3}>
+                  Marker size
+                </RText>
+                <ROptionSelector
+                  options={MAP_MARKER_SIZE_OPTIONS}
+                  value={preferences.mapMarkerSize}
+                  onChange={(mapMarkerSize) => setPreferences((prev) => ({ ...prev, mapMarkerSize }))}
+                  theme={theme}
+                />
+              </View>
+
+              <View style={{ gap: spacing.scale[2] }}>
+                <RText variant="caption" color={colors.ink3}>
+                  Button size
+                </RText>
+                <ROptionSelector
+                  options={MAP_BUTTON_SIZE_OPTIONS}
+                  value={preferences.mapButtonSize}
+                  onChange={(mapButtonSize) => setPreferences((prev) => ({ ...prev, mapButtonSize }))}
+                  theme={theme}
+                />
+              </View>
+
+              <View style={{ gap: spacing.scale[2] }}>
+                <RText variant="caption" color={colors.ink3}>
+                  Button position
+                </RText>
+                <ROptionSelector
+                  options={MAP_BUTTON_POSITION_OPTIONS}
+                  value={preferences.mapButtonPosition}
+                  onChange={(mapButtonPosition) => setPreferences((prev) => ({ ...prev, mapButtonPosition }))}
+                  theme={theme}
+                />
+              </View>
+
+              <RToggleRow
+                label="Simple map"
+                description="Shows every active hazard the same way, instead of a different colour and icon per type"
+                value={preferences.simpleMap}
+                onChange={(simpleMap) => setPreferences((prev) => ({ ...prev, simpleMap }))}
+                theme={theme}
+              />
+
+              <View style={{ gap: spacing.scale[2] }}>
+                <RText variant="caption" color={colors.ink3}>
+                  Travel modes you can use
+                </RText>
+                {ALL_TRAVEL_MODES.map((mode) => {
+                  const meta = TRAVEL_MODE_META[mode];
+                  const usable = !preferences.disabledTravelModes.includes(mode);
+                  return (
+                    <RToggleRow
+                      key={mode}
+                      label={meta.label}
+                      value={usable}
+                      onChange={(value) => handleToggleModeUsable(mode, value)}
+                      theme={theme}
+                    />
+                  );
+                })}
+              </View>
+
+              <View style={{ gap: spacing.scale[2] }}>
+                <RText variant="caption" color={colors.ink3}>
+                  Default travel mode
+                </RText>
+                <ROptionSelector
+                  options={availableTravelModes.map((mode) => ({
+                    value: mode,
+                    label: TRAVEL_MODE_META[mode].label,
+                    icon: TRAVEL_MODE_META[mode].icon,
+                  }))}
+                  value={preferences.defaultTravelMode}
+                  onChange={(defaultTravelMode) => setPreferences((prev) => ({ ...prev, defaultTravelMode }))}
+                  theme={theme}
+                />
+              </View>
+            </View>
+          </ScrollView>
+        </RCenteredOverlay>
+      )}
+
     </View>
   );
 }
@@ -964,27 +1223,45 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  headerRightControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerIconButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   hazardMarker: {
     alignItems: 'center',
     justifyContent: 'center',
   },
   destinationMarker: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
     borderColor: 'white',
   },
   directionsBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    gap: 12,
     borderWidth: 1,
     elevation: 6,
     shadowColor: '#000',
     shadowOpacity: 0.15,
     shadowRadius: 6,
+  },
+  directionsBannerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  travelModeRow: {
+    flexDirection: 'row',
+  },
+  travelModeButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   directionsBannerText: {
     flex: 1,
@@ -1059,7 +1336,14 @@ const styles = StyleSheet.create({
     bottom: BASE_BOTTOM,
     left: 0,
     right: 0,
+    paddingHorizontal: 16,
     flexDirection: 'row',
+    justifyContent: 'center',
+    gap: BUTTON_GAP,
+  },
+  sideCluster: {
+    position: 'absolute',
+    flexDirection: 'column',
     justifyContent: 'center',
     gap: BUTTON_GAP,
   },

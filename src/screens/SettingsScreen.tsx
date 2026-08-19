@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RButton } from '../components/RButton';
 import { RCard } from '../components/RCard';
+import { ROptionSelector } from '../components/ROptionSelector';
 import { RText } from '../components/RText';
+import { RToggleRow } from '../components/RToggleRow';
 import { useTheme } from '../theme/useTheme';
-import type { Theme } from '../theme/useTheme';
 import { DEFAULT_PREFERENCES, TextScale, ThemeMode, usePreferences } from '../theme/PreferencesContext';
 import { INITIAL_FAMILY, FamilyMember } from '../data/family';
 import { INITIAL_PLANS, INITIAL_SAFE_LOCATIONS, EvacuationPlan, SafeLocation } from '../data/plans';
@@ -15,98 +16,11 @@ interface SettingsScreenProps {
   onResetFamily: (family: FamilyMember[]) => void;
   onResetPlans: (plans: EvacuationPlan[]) => void;
   onResetSafeLocations: (locations: SafeLocation[]) => void;
-}
-
-// ---------------------------------------------------------------------------
-// Generic large, icon+label option list — same shape as the status selectors
-// on Family/Plans, reused here for theme mode and text size.
-// ---------------------------------------------------------------------------
-function OptionSelector<T extends string>({
-  options,
-  value,
-  onChange,
-  theme,
-}: {
-  options: { value: T; label: string; icon: keyof typeof Ionicons.glyphMap }[];
-  value: T;
-  onChange: (value: T) => void;
-  theme: Theme;
-}) {
-  const { colors, spacing, radius, sizing } = theme;
-
-  return (
-    <View style={{ gap: spacing.scale[3] }}>
-      {options.map((option) => {
-        const selected = option.value === value;
-        return (
-          <Pressable
-            key={option.value}
-            onPress={() => onChange(option.value)}
-            accessibilityRole="button"
-            accessibilityState={{ selected }}
-            style={[
-              styles.optionRow,
-              {
-                minHeight: sizing.touchTarget.preferredPrimary,
-                borderRadius: radius.lg,
-                paddingHorizontal: spacing.cardPadding,
-                gap: spacing.scale[3],
-                backgroundColor: selected ? colors.surface2 : colors.surface,
-                borderColor: selected ? colors.ink : colors.hairline,
-              },
-            ]}
-          >
-            <Ionicons name={option.icon} size={sizing.icon.medium} color={selected ? colors.ink : colors.ink3} />
-            <RText variant="bodyEmphasis" color={selected ? colors.ink : colors.ink2} style={{ flex: 1 }}>
-              {option.label}
-            </RText>
-            {selected && <Ionicons name="checkmark" size={sizing.icon.medium} color={colors.ink} />}
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// A settings row with a label/description on the left and a Switch on the right
-// ---------------------------------------------------------------------------
-function ToggleRow({
-  label,
-  description,
-  value,
-  onChange,
-  theme,
-}: {
-  label: string;
-  description?: string;
-  value: boolean;
-  onChange: (value: boolean) => void;
-  theme: Theme;
-}) {
-  const { colors, spacing } = theme;
-
-  return (
-    <View style={[styles.toggleRow, { gap: spacing.scale[3] }]}>
-      <View style={{ flex: 1, gap: spacing.scale[1] }}>
-        <RText variant="bodyEmphasis" color={colors.ink}>
-          {label}
-        </RText>
-        {description && (
-          <RText variant="caption" color={colors.ink3}>
-            {description}
-          </RText>
-        )}
-      </View>
-      <Switch
-        value={value}
-        onValueChange={onChange}
-        trackColor={{ false: colors.hairline, true: colors.accent }}
-        thumbColor={colors.surface}
-        accessibilityLabel={label}
-      />
-    </View>
-  );
+  /** Switches to the Map tab and opens its own settings overlay directly —
+   * marker/button size/position, simple map, and travel mode preferences all
+   * live there now, not duplicated here, since they're only meaningful while
+   * looking at the actual map. */
+  onOpenMapSettings: () => void;
 }
 
 const THEME_MODE_OPTIONS: { value: ThemeMode; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
@@ -121,7 +35,7 @@ const TEXT_SCALE_OPTIONS: { value: TextScale; label: string; icon: keyof typeof 
   { value: 'xlarge', label: 'Extra large', icon: 'text-outline' },
 ];
 
-export function SettingsScreen({ onResetFamily, onResetPlans, onResetSafeLocations }: SettingsScreenProps) {
+export function SettingsScreen({ onResetFamily, onResetPlans, onResetSafeLocations, onOpenMapSettings }: SettingsScreenProps) {
   const theme = useTheme();
   const { colors, spacing, radius, sizing } = theme;
   const { preferences, setPreferences } = usePreferences();
@@ -189,7 +103,7 @@ export function SettingsScreen({ onResetFamily, onResetPlans, onResetSafeLocatio
               <RText variant="caption" color={colors.ink3}>
                 Theme
               </RText>
-              <OptionSelector
+              <ROptionSelector
                 options={THEME_MODE_OPTIONS}
                 value={preferences.themeMode}
                 onChange={(themeMode) => updatePreferences({ themeMode })}
@@ -197,7 +111,7 @@ export function SettingsScreen({ onResetFamily, onResetPlans, onResetSafeLocatio
               />
             </View>
 
-            <ToggleRow
+            <RToggleRow
               label="High contrast"
               description="Stronger colour contrast throughout the app"
               value={preferences.highContrast}
@@ -210,7 +124,7 @@ export function SettingsScreen({ onResetFamily, onResetPlans, onResetSafeLocatio
             <RText variant="sectionHeading" color={colors.ink}>
               Text size
             </RText>
-            <OptionSelector
+            <ROptionSelector
               options={TEXT_SCALE_OPTIONS}
               value={preferences.textScale}
               onChange={(textScale) => updatePreferences({ textScale })}
@@ -230,12 +144,19 @@ export function SettingsScreen({ onResetFamily, onResetPlans, onResetSafeLocatio
             <RText variant="sectionHeading" color={colors.ink}>
               Map
             </RText>
-            <ToggleRow
-              label="Simple map"
-              description="Shows every active hazard the same way, instead of a different colour and icon per type"
-              value={preferences.simpleMap}
-              onChange={(simpleMap) => updatePreferences({ simpleMap })}
-              theme={theme}
+            <RText variant="body" color={colors.ink2}>
+              Marker and button appearance, simple map mode, and which travel modes to offer for directions all live
+              on the Map screen itself, since they're easiest to judge while actually looking at the map.
+            </RText>
+
+            <RButton
+              label="Customize map & travel settings"
+              variant="secondary"
+              size="m"
+              icon="options-outline"
+              iconPosition="leading"
+              onPress={onOpenMapSettings}
+              accessibilityHint="Opens the Map screen with marker size, button size, position, simple map, and travel mode controls"
             />
           </RCard>
 
@@ -244,7 +165,7 @@ export function SettingsScreen({ onResetFamily, onResetPlans, onResetSafeLocatio
               Alerts & voice
             </RText>
 
-            <ToggleRow
+            <RToggleRow
               label="Read alerts aloud automatically"
               description="Speaks the active alert on the Home screen as soon as it appears"
               value={preferences.autoReadAlerts}
@@ -337,14 +258,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  optionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
   },
 });

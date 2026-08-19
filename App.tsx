@@ -93,6 +93,15 @@ export default function App() {
     }
   };
 
+  // Set when the user taps "Customize map appearance" on Settings —
+  // switches to the Map tab and opens its own settings overlay directly.
+  const [openMapSettings, setOpenMapSettings] = useState(false);
+
+  const handleOpenMapSettings = () => {
+    setOpenMapSettings(true);
+    setActiveTab('Map');
+  };
+
   const onLayout = useCallback(async () => {
     if (fontsLoaded && dataLoaded) {
       await SplashScreen.hideAsync();
@@ -124,6 +133,8 @@ export default function App() {
                 onViewPlanForHazard={handleViewPlanForHazard}
                 destination={mapDestination}
                 onClearDestination={() => setMapDestination(null)}
+                openSettingsOnMount={openMapSettings}
+                onSettingsOnMountHandled={() => setOpenMapSettings(false)}
               />
             )}
             {activeTab === 'Family' && <FamilyScreen family={family} onUpdateFamily={setFamily} />}
@@ -143,6 +154,7 @@ export default function App() {
                 onResetFamily={setFamily}
                 onResetPlans={setPlans}
                 onResetSafeLocations={setSafeLocations}
+                onOpenMapSettings={handleOpenMapSettings}
               />
             )}
           </View>
