@@ -15,13 +15,14 @@ import { TabKey } from './src/components/RTabBar';
 import { SettingsProvider, useSettings } from './src/context/SettingsContext';
 import { FamilyScreen } from './src/screens/FamilyScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
+import { MapScreen } from './src/screens/MapScreen';
 import { PlansScreen } from './src/screens/PlansScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 
 SplashScreen.preventAutoHideAsync();
 
-// Only Home, Family, Plans, and Settings have real screens so far; Map is a visual placeholder.
-const ROUTABLE_TABS: TabKey[] = ['Home', 'Family', 'Plans', 'Settings'];
+// All five tabs now have real screens.
+const ROUTABLE_TABS: TabKey[] = ['Home', 'Family', 'Map', 'Plans', 'Settings'];
 
 function AppContent({ onLayout }: { onLayout: () => void }) {
   const [activeTab, setActiveTab] = useState<TabKey>('Home');
@@ -36,6 +37,7 @@ function AppContent({ onLayout }: { onLayout: () => void }) {
   return (
     <View style={{ flex: 1 }} onLayout={onLayout}>
       {activeTab === 'Family' && <FamilyScreen onNavigate={handleNavigate} />}
+      {activeTab === 'Map' && <MapScreen onNavigate={handleNavigate} />}
       {activeTab === 'Plans' && <PlansScreen onNavigate={handleNavigate} />}
       {activeTab === 'Settings' && <SettingsScreen onNavigate={handleNavigate} />}
       {activeTab === 'Home' && <HomeScreen onNavigate={handleNavigate} />}
