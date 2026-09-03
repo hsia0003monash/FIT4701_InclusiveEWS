@@ -22,7 +22,13 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "InclusiveEWS uses your location to show it on the map and highlight nearby alerts."
+        }
+      ]
     ]
   }
 }
