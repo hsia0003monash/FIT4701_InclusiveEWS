@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Vibration, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Vibration, View } from 'react-native';
 import MapView, { Circle, Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AlertDetailModal } from '../components/AlertDetailModal';
@@ -9,7 +9,8 @@ import { RCard } from '../components/RCard';
 import { RTabBar, TabKey } from '../components/RTabBar';
 import { RText } from '../components/RText';
 import { SeverityBadge } from '../components/SeverityBadge';
-import { HOME_IN_DANGER, HOME_LOCATION, MAP_ALERTS, MapAlert } from '../data/alerts';
+import { HOME_IN_DANGER, HOME_LOCATION, MAP_ALERTS, MapAlert, withAlpha } from '../data/alerts';
+import { FullMapScreen } from './FullMapScreen';
 import { severityLevels } from '../theme/tokens';
 import { useTheme } from '../theme/useTheme';
 
@@ -17,18 +18,11 @@ interface MapScreenProps {
   onNavigate: (tab: TabKey) => void;
 }
 
-/** '#RRGGBB' -> 'rgba(r, g, b, alpha)', for the map's danger-zone circle fills. */
-function withAlpha(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
 export function MapScreen({ onNavigate }: MapScreenProps) {
   const { colors, severity } = useTheme();
   const [selectedAlert, setSelectedAlert] = useState<MapAlert | null>(null);
   const [safeSent, setSafeSent] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   const handleImSafe = () => {
     Vibration.vibrate(200);
@@ -77,7 +71,7 @@ export function MapScreen({ onNavigate }: MapScreenProps) {
             >
               <Marker
                 coordinate={HOME_LOCATION}
-                title={HOME_IN_DANGER ? 'Your home — Danger' : 'Your home — Safe'}
+                title={HOME_IN_DANGER ? 'Your home - Danger' : 'Your home - Safe'}
                 description={HOME_IN_DANGER ? 'Leave the area if possible.' : 'No action needed.'}
                 pinColor={HOME_IN_DANGER ? severity.emergency.fg : severity.safe.fg}
               />
@@ -104,6 +98,15 @@ export function MapScreen({ onNavigate }: MapScreenProps) {
                 />
               ))}
             </MapView>
+
+            <Pressable
+              onPress={() => setExpanded(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Expand map"
+              style={[styles.expandButton, { backgroundColor: colors.surface, borderColor: colors.hairline }]}
+            >
+              <Ionicons name="expand" size={18} color={colors.ink} />
+            </Pressable>
           </View>
 
           <RText variant="sectionHeading" color={colors.ink} accessibilityRole="header">
@@ -163,7 +166,7 @@ export function MapScreen({ onNavigate }: MapScreenProps) {
               </View>
               <View style={styles.alertInfo}>
                 <RText variant="bodyEmphasis" color={colors.ink}>
-                  {HOME_IN_DANGER ? 'Your home — Danger' : 'Your home — Safe'}
+                  {HOME_IN_DANGER ? 'Your home - Danger' : 'Your home - Safe'}
                 </RText>
                 <RText variant="secondary" color={colors.ink2}>
                   {HOME_IN_DANGER ? 'Leave the area if possible.' : 'No action needed.'}
@@ -186,6 +189,10 @@ export function MapScreen({ onNavigate }: MapScreenProps) {
       </SafeAreaView>
       <RTabBar active="Map" onSelect={onNavigate} />
       <AlertDetailModal alert={selectedAlert} onClose={() => setSelectedAlert(null)} />
+
+      <Modal visible={expanded} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => setExpanded(false)}>
+        <FullMapScreen onClose={() => setExpanded(false)} />
+      </Modal>
     </View>
   );
 }
@@ -225,6 +232,21 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
+  },
+  expandButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   alertCard: {
     gap: 8,
