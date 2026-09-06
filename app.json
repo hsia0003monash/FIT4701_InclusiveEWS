@@ -28,7 +28,9 @@
         {
           "locationWhenInUsePermission": "InclusiveEWS uses your location to show it on the map and highlight nearby alerts."
         }
-      ]
+      ],
+      "expo-splash-screen",
+      "expo-status-bar"
     ]
   }
 }

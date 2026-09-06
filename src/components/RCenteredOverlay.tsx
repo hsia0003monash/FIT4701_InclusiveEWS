@@ -15,8 +15,8 @@ export function RCenteredOverlay({ title, onDismiss, children, maxWidth = 380 }:
 
   return (
     <View style={styles.overlay} pointerEvents="box-none">
-      <Pressable style={StyleSheet.absoluteFillObject} onPress={onDismiss} accessibilityLabel="Dismiss">
-        <View style={[StyleSheet.absoluteFillObject, styles.scrim]} />
+      <Pressable style={StyleSheet.absoluteFill} onPress={onDismiss} accessibilityLabel="Dismiss">
+        <View style={[StyleSheet.absoluteFill, styles.scrim]} />
       </Pressable>
 
       <View
@@ -56,7 +56,7 @@ export function RCenteredOverlay({ title, onDismiss, children, maxWidth = 380 }:
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,

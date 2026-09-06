@@ -281,7 +281,7 @@ export function FullMapScreen({ onClose }: FullMapScreenProps) {
     return (
       <View style={[styles.screen, { backgroundColor: colors.bg }]}>
         <MapView
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
           customMapStyle={scheme === 'dark' ? DARK_MAP_STYLE : []}
           mapType={Platform.OS === 'ios' && scheme === 'dark' ? 'mutedStandard' : 'standard'}
         />
@@ -293,7 +293,7 @@ export function FullMapScreen({ onClose }: FullMapScreenProps) {
   return (
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>
       <MapView
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
         region={region}
         ref={mapRef}
         onRegionChangeComplete={setCurrentRegion}
