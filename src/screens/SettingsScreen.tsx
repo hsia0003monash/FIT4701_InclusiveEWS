@@ -97,26 +97,17 @@ export function SettingsScreen({ onNavigate }: SettingsScreenProps) {
               value={highContrast}
               onValueChange={setHighContrast}
             />
-            <View>
-              <ToggleRow
-                icon={
-                  <RText variant="bodyEmphasis" color={colors.ink}>
-                    Aa
-                  </RText>
-                }
-                title="Large text"
-                description="Increases body text for easier reading"
-                value={largeText}
-                onValueChange={setLargeText}
-              />
-              <View style={styles.previewWrap}>
-                <View style={[styles.previewBox, { backgroundColor: colors.surface2 }]}>
-                  <RText variant="body" color={colors.ink2}>
-                    Preview: Heavy rain is flooding streets near you.
-                  </RText>
-                </View>
-              </View>
-            </View>
+            <ToggleRow
+              icon={
+                <RText variant="bodyEmphasis" color={colors.ink}>
+                  Aa
+                </RText>
+              }
+              title="Large text"
+              description="Increases body text for easier reading"
+              value={largeText}
+              onValueChange={setLargeText}
+            />
             <ToggleRow
               icon={
                 <View style={styles.swatchPair}>
@@ -193,14 +184,6 @@ const styles = StyleSheet.create({
   rowText: {
     flex: 1,
     gap: 2,
-  },
-  previewWrap: {
-    paddingHorizontal: 18,
-    paddingBottom: 16,
-  },
-  previewBox: {
-    borderRadius: 10,
-    padding: 12,
   },
   swatchPair: {
     flexDirection: 'row',
