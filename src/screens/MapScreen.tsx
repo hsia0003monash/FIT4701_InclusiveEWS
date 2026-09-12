@@ -27,13 +27,17 @@ export function MapScreen({ onNavigate, focusAlertId, onFocusHandled }: MapScree
   const [selectedAlert, setSelectedAlert] = useState<MapAlert | null>(null);
   const [safeSent, setSafeSent] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
   const mapRef = useRef<MapView | null>(null);
   const markerRefs = useRef<Record<string, MapMarker | null>>({});
 
-  // When asked to focus a specific alert, replicate a manual marker tap: center the
-  // map on it, pop the native marker callout, and open its detail sheet.
+  // Focus a specific alert the same way a manual marker tap does: center the map on it,
+  // pop the native marker callout, and open its detail sheet.
+  //
+  // This runs only once the map is ready (markers mounted), so the callout reliably
+  // fires even when the Map tab was just navigated to from "See on map".
   useEffect(() => {
-    if (!focusAlertId) return;
+    if (!focusAlertId || !mapReady) return;
     const target = MAP_ALERTS.find((a) => a.id === focusAlertId);
     if (!target) return;
 
@@ -44,19 +48,18 @@ export function MapScreen({ onNavigate, focusAlertId, onFocusHandled }: MapScree
         latitudeDelta: 0.12,
         longitudeDelta: 0.12,
       },
-      600,
+      500,
     );
 
-    // Pop the native callout once the map has settled and the marker ref exists,
-    // then open the detail sheet — the same two things a manual tap produces.
+    // Let the region animation begin, then pop the callout and open the sheet.
     const timer = setTimeout(() => {
       markerRefs.current[target.id]?.showCallout();
       setSelectedAlert(target);
       onFocusHandled?.();
-    }, 700);
+    }, 550);
 
     return () => clearTimeout(timer);
-  }, [focusAlertId, onFocusHandled]);
+  }, [focusAlertId, mapReady, onFocusHandled]);
 
   const handleImSafe = () => {
     Vibration.vibrate(200);
@@ -96,6 +99,7 @@ export function MapScreen({ onNavigate, focusAlertId, onFocusHandled }: MapScree
               ref={mapRef}
               provider={PROVIDER_DEFAULT}
               style={styles.map}
+              onMapReady={() => setMapReady(true)}
               initialRegion={{
                 latitude: HOME_LOCATION.latitude,
                 longitude: HOME_LOCATION.longitude,
