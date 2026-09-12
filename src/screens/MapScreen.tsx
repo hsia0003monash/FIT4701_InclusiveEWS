@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Vibration, View } from 'react-native';
-import MapView, { Circle, MapMarker, Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import MapView, { Circle, Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AlertDetailModal } from '../components/AlertDetailModal';
 import { RButton } from '../components/RButton';
@@ -28,10 +28,9 @@ export function MapScreen({ onNavigate, focusAlertId, onFocusHandled }: MapScree
   const [safeSent, setSafeSent] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const mapRef = useRef<MapView | null>(null);
-  const markerRefs = useRef<Record<string, MapMarker | null>>({});
 
-  // When asked to focus a specific alert, center the map on it, drop into its
-  // marker's coordinate, open its detail sheet, and pop the marker's callout.
+  // When asked to focus a specific alert, center the map on it and open its detail
+  // sheet — exactly as if the user had tapped the marker themselves.
   useEffect(() => {
     if (!focusAlertId) return;
     const target = MAP_ALERTS.find((a) => a.id === focusAlertId);
@@ -47,10 +46,7 @@ export function MapScreen({ onNavigate, focusAlertId, onFocusHandled }: MapScree
       600,
     );
     setSelectedAlert(target);
-    // Pop the marker callout after the region animation settles.
-    const timer = setTimeout(() => markerRefs.current[target.id]?.showCallout(), 650);
     onFocusHandled?.();
-    return () => clearTimeout(timer);
   }, [focusAlertId, onFocusHandled]);
 
   const handleImSafe = () => {
@@ -120,9 +116,6 @@ export function MapScreen({ onNavigate, focusAlertId, onFocusHandled }: MapScree
               {MAP_ALERTS.map((alert) => (
                 <Marker
                   key={`pin-${alert.id}`}
-                  ref={(ref) => {
-                    markerRefs.current[alert.id] = ref;
-                  }}
                   coordinate={alert.coordinate}
                   title={alert.title}
                   description={`${alert.distanceKm} km away`}
