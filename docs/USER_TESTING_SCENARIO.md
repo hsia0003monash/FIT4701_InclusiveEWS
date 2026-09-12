@@ -38,6 +38,11 @@ protocol — the observer records what the participant says.
    - 🌩️ **Severe thunderstorm from the west** — Watch — 4.6 km away
    - 🔥 **Bushfire near the Dandenong Ranges** — Emergency — 32 km away
 3. The bottom tab bar has five tabs: Home, Map, Family, Plans, Settings.
+4. **Facilitator control:** a small round red **⚡ button** floats above the tab bar
+   (bottom-right). Tapping it opens a "Simulate a threat" picker. Choosing a threat
+   pushes a **full-screen, unavoidable alert** to the user (the phone vibrates). This is
+   how you mock "a threat just happened" during the session. It is for the facilitator
+   only — do not point it out to the participant.
 
 ---
 
@@ -55,7 +60,22 @@ protocol — the observer records what the participant says.
 Each task lists the **Part B questions** it exercises. Codes: A = Accessibility,
 T = Time-Critical, S = Situational/Context, D = Social Design, O = Other.
 
-### Task 1 — First reaction to the alert (Home)
+### Task 0 — A threat arrives (facilitator-triggered)
+*Covers: A8, A11, A12, T1, S2 (vibration), A4 (large actions)*
+
+1. While the participant is looking at the Home screen, the **facilitator taps the ⚡
+   button** and picks the **Bushfire (Emergency)** threat.
+2. A full-screen alert takes over the phone and it vibrates. Ask the participant to say,
+   within **5 seconds**, what is happening and how serious it is. (T1, A8, A12)
+3. Ask whether the big hazard icon + colour made it instantly clear **without reading
+   much**. (A11, visual-first)
+4. Have them read the numbered "What to do now" steps, then tap the large **"I'm Safe"**
+   button (or "See on map"). Were the buttons easy to hit? (A4)
+
+> Repeat with the Flood (Advice) or Storm (Watch) threat if you want to compare how
+> clearly severity is communicated across levels.
+
+### Task 1 — First reaction to the standing alert (Home)
 *Covers: A1, A2, A3, A6, A7, A8, A11, A12, T1*
 
 1. Look at the Home screen. **Without scrolling**, say out loud what the featured alert
@@ -193,6 +213,7 @@ Tick each item once the participant has genuinely experienced (or attempted) it.
 
 | Task | Time to complete | Errors / hesitations | Verbatim quotes |
 |------|------------------|----------------------|-----------------|
+| 0    |                  |                      |                 |
 | 1    |                  |                      |                 |
 | 2    |                  |                      |                 |
 | 3    |                  |                      |                 |

@@ -11,8 +11,11 @@ import { StatusBar } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { IncomingAlertOverlay } from './src/components/IncomingAlertOverlay';
+import { SimulateThreatButton } from './src/components/SimulateThreatButton';
 import { TabKey } from './src/components/RTabBar';
 import { SettingsProvider, useSettings } from './src/context/SettingsContext';
+import { MapAlert } from './src/data/alerts';
 import { FamilyScreen } from './src/screens/FamilyScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { MapScreen } from './src/screens/MapScreen';
@@ -26,12 +29,18 @@ const ROUTABLE_TABS: TabKey[] = ['Home', 'Family', 'Map', 'Plans', 'Settings'];
 
 function AppContent({ onLayout }: { onLayout: () => void }) {
   const [activeTab, setActiveTab] = useState<TabKey>('Home');
+  const [incomingThreat, setIncomingThreat] = useState<MapAlert | null>(null);
   const { darkMode } = useSettings();
 
   const handleNavigate = useCallback((tab: TabKey) => {
     if (ROUTABLE_TABS.includes(tab)) {
       setActiveTab(tab);
     }
+  }, []);
+
+  const handleSeeOnMap = useCallback(() => {
+    setIncomingThreat(null);
+    setActiveTab('Map');
   }, []);
 
   return (
@@ -41,6 +50,17 @@ function AppContent({ onLayout }: { onLayout: () => void }) {
       {activeTab === 'Plans' && <PlansScreen onNavigate={handleNavigate} />}
       {activeTab === 'Settings' && <SettingsScreen onNavigate={handleNavigate} />}
       {activeTab === 'Home' && <HomeScreen onNavigate={handleNavigate} />}
+
+      {/* Facilitator control: mock an incoming threat on demand during user testing. */}
+      <SimulateThreatButton onTrigger={setIncomingThreat} />
+
+      {/* Full-screen unavoidable alert that appears when a threat is pushed. */}
+      <IncomingAlertOverlay
+        alert={incomingThreat}
+        onDismiss={() => setIncomingThreat(null)}
+        onSeeOnMap={handleSeeOnMap}
+      />
+
       <StatusBar style={darkMode ? 'light' : 'dark'} />
     </View>
   );
