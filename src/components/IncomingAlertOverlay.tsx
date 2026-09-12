@@ -14,7 +14,7 @@ interface IncomingAlertOverlayProps {
   /** Dismiss the overlay (e.g. after "I'm Safe"). */
   onDismiss: () => void;
   /** Take the user to the map for this threat. */
-  onSeeOnMap: () => void;
+  onSeeOnMap: (alert: MapAlert) => void;
 }
 
 /**
@@ -116,7 +116,7 @@ export function IncomingAlertOverlay({ alert, onDismiss, onSeeOnMap }: IncomingA
               size="l"
               icon="map"
               iconPosition="leading"
-              onPress={onSeeOnMap}
+              onPress={() => alert && onSeeOnMap(alert)}
               accessibilityHint="Opens the map to show where this threat is"
               fullWidth
             />

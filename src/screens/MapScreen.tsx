@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Vibration, View } from 'react-native';
-import MapView, { Circle, Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import MapView, { Circle, MapMarker, Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AlertDetailModal } from '../components/AlertDetailModal';
 import { RButton } from '../components/RButton';
@@ -16,13 +16,42 @@ import { useTheme } from '../theme/useTheme';
 
 interface MapScreenProps {
   onNavigate: (tab: TabKey) => void;
+  /** When set, the map centers on this alert and opens its details (e.g. from "See on map"). */
+  focusAlertId?: string | null;
+  /** Called once the focused alert has been handled, so the parent can clear it. */
+  onFocusHandled?: () => void;
 }
 
-export function MapScreen({ onNavigate }: MapScreenProps) {
+export function MapScreen({ onNavigate, focusAlertId, onFocusHandled }: MapScreenProps) {
   const { colors, severity } = useTheme();
   const [selectedAlert, setSelectedAlert] = useState<MapAlert | null>(null);
   const [safeSent, setSafeSent] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const mapRef = useRef<MapView | null>(null);
+  const markerRefs = useRef<Record<string, MapMarker | null>>({});
+
+  // When asked to focus a specific alert, center the map on it, drop into its
+  // marker's coordinate, open its detail sheet, and pop the marker's callout.
+  useEffect(() => {
+    if (!focusAlertId) return;
+    const target = MAP_ALERTS.find((a) => a.id === focusAlertId);
+    if (!target) return;
+
+    mapRef.current?.animateToRegion(
+      {
+        latitude: target.coordinate.latitude,
+        longitude: target.coordinate.longitude,
+        latitudeDelta: 0.12,
+        longitudeDelta: 0.12,
+      },
+      600,
+    );
+    setSelectedAlert(target);
+    // Pop the marker callout after the region animation settles.
+    const timer = setTimeout(() => markerRefs.current[target.id]?.showCallout(), 650);
+    onFocusHandled?.();
+    return () => clearTimeout(timer);
+  }, [focusAlertId, onFocusHandled]);
 
   const handleImSafe = () => {
     Vibration.vibrate(200);
@@ -59,6 +88,7 @@ export function MapScreen({ onNavigate }: MapScreenProps) {
 
           <View style={[styles.mapContainer, { borderColor: colors.hairline }]}>
             <MapView
+              ref={mapRef}
               provider={PROVIDER_DEFAULT}
               style={styles.map}
               initialRegion={{
@@ -90,6 +120,9 @@ export function MapScreen({ onNavigate }: MapScreenProps) {
               {MAP_ALERTS.map((alert) => (
                 <Marker
                   key={`pin-${alert.id}`}
+                  ref={(ref) => {
+                    markerRefs.current[alert.id] = ref;
+                  }}
                   coordinate={alert.coordinate}
                   title={alert.title}
                   description={`${alert.distanceKm} km away`}

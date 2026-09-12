@@ -30,6 +30,7 @@ const ROUTABLE_TABS: TabKey[] = ['Home', 'Family', 'Map', 'Plans', 'Settings'];
 function AppContent({ onLayout }: { onLayout: () => void }) {
   const [activeTab, setActiveTab] = useState<TabKey>('Home');
   const [incomingThreat, setIncomingThreat] = useState<MapAlert | null>(null);
+  const [focusAlertId, setFocusAlertId] = useState<string | null>(null);
   const { darkMode } = useSettings();
 
   const handleNavigate = useCallback((tab: TabKey) => {
@@ -38,15 +39,22 @@ function AppContent({ onLayout }: { onLayout: () => void }) {
     }
   }, []);
 
-  const handleSeeOnMap = useCallback(() => {
+  const handleSeeOnMap = useCallback((alert: MapAlert) => {
     setIncomingThreat(null);
+    setFocusAlertId(alert.id);
     setActiveTab('Map');
   }, []);
 
   return (
     <View style={{ flex: 1 }} onLayout={onLayout}>
       {activeTab === 'Family' && <FamilyScreen onNavigate={handleNavigate} />}
-      {activeTab === 'Map' && <MapScreen onNavigate={handleNavigate} />}
+      {activeTab === 'Map' && (
+        <MapScreen
+          onNavigate={handleNavigate}
+          focusAlertId={focusAlertId}
+          onFocusHandled={() => setFocusAlertId(null)}
+        />
+      )}
       {activeTab === 'Plans' && <PlansScreen onNavigate={handleNavigate} />}
       {activeTab === 'Settings' && <SettingsScreen onNavigate={handleNavigate} />}
       {activeTab === 'Home' && <HomeScreen onNavigate={handleNavigate} />}
