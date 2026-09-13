@@ -1,13 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Pressable, ScrollView, StyleSheet, Vibration, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RButton } from '../components/RButton';
 import { RCard } from '../components/RCard';
 import { RTabBar, TabKey } from '../components/RTabBar';
 import { RText } from '../components/RText';
 import { SeverityBadge } from '../components/SeverityBadge';
-import { FAMILY } from '../data/family';
+import { FAMILY, FamilyMember } from '../data/family';
 import { useTheme } from '../theme/useTheme';
 
 interface FamilyScreenProps {
@@ -17,10 +17,47 @@ interface FamilyScreenProps {
 export function FamilyScreen({ onNavigate }: FamilyScreenProps) {
   const { colors, severity } = useTheme();
   const [selectedId, setSelectedId] = useState<string | null>('kai');
+  // Local, editable copy so actions like "I know they're safe" visibly update the list.
+  const [members, setMembers] = useState<FamilyMember[]>(FAMILY);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const safeCount = FAMILY.filter((m) => m.status === 'safe').length + 1; // +1 for the user
-  const waitingCount = FAMILY.filter((m) => m.status === 'checkIn').length;
-  const total = FAMILY.length + 1;
+  // Show a short confirmation banner (with a tactile buzz) and fade it out.
+  const showToast = (message: string) => {
+    Vibration.vibrate(60);
+    setToast(message);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    Animated.timing(toastOpacity, { toValue: 1, duration: 180, useNativeDriver: true }).start();
+    toastTimer.current = setTimeout(() => {
+      Animated.timing(toastOpacity, { toValue: 0, duration: 260, useNativeDriver: true }).start(
+        () => setToast(null),
+      );
+    }, 2200);
+  };
+
+  useEffect(() => () => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+  }, []);
+
+  const handleUpdateStatus = () => showToast("Status updated — your family has been told you're safe.");
+  const handleCall = (member: FamilyMember) => showToast(`Calling ${member.name}…`);
+  const handleNudge = (member: FamilyMember) => showToast(`Nudge sent to ${member.name}.`);
+  const handleMarkSafe = (member: FamilyMember) => {
+    setMembers((prev) =>
+      prev.map((m) =>
+        m.id === member.id
+          ? { ...m, status: 'safe', updated: 'Just now', message: 'Marked safe by you.' }
+          : m,
+      ),
+    );
+    showToast(`${member.name} marked as safe.`);
+  };
+  const handleAdd = () => showToast('Add a person — coming soon.');
+
+  const safeCount = members.filter((m) => m.status === 'safe').length + 1; // +1 for the user
+  const waitingCount = members.filter((m) => m.status === 'checkIn').length;
+  const total = members.length + 1;
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>
@@ -67,12 +104,14 @@ export function FamilyScreen({ onNavigate }: FamilyScreenProps) {
               size="l"
               icon="checkmark-circle-outline"
               iconPosition="leading"
+              onPress={handleUpdateStatus}
+              accessibilityHint="Sends an updated safe status to your family"
               fullWidth
             />
             <View style={styles.statusFooterRow}>
               <Ionicons name="time-outline" size={14} color={severity.safe.fg} />
               <RText variant="caption" color={severity.safe.fg}>
-                Sent to {FAMILY.length} people · updates every 15 min
+                Sent to {members.length} people · updates every 15 min
               </RText>
             </View>
           </RCard>
@@ -81,7 +120,12 @@ export function FamilyScreen({ onNavigate }: FamilyScreenProps) {
             <RText variant="sectionHeading" color={colors.ink}>
               Your people
             </RText>
-            <Pressable accessibilityRole="button" accessibilityLabel="Add a person" style={styles.addRow}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Add a person"
+              onPress={handleAdd}
+              style={styles.addRow}
+            >
               <Ionicons name="add" size={16} color={colors.ink2} />
               <RText variant="body" color={colors.ink2}>
                 Add
@@ -89,7 +133,7 @@ export function FamilyScreen({ onNavigate }: FamilyScreenProps) {
             </Pressable>
           </View>
 
-          {FAMILY.map((member) => {
+          {members.map((member) => {
             const isWaiting = member.status === 'checkIn';
             const isSelected = member.id === selectedId;
 
@@ -141,9 +185,9 @@ export function FamilyScreen({ onNavigate }: FamilyScreenProps) {
 
                   {isSelected && (
                     <View style={styles.actionsRow}>
-                      <RButton label="Call" variant="danger" size="s" icon="call" iconPosition="leading" style={styles.actionButton} />
-                      <RButton label="Nudge" variant="secondary" size="s" style={styles.actionButton} />
-                      <RButton label="I know they're safe" variant="secondary" size="s" style={styles.actionButton} />
+                      <RButton label="Call" variant="danger" size="s" icon="call" iconPosition="leading" onPress={() => handleCall(member)} style={styles.actionButton} />
+                      <RButton label="Nudge" variant="secondary" size="s" onPress={() => handleNudge(member)} style={styles.actionButton} />
+                      <RButton label="I know they're safe" variant="secondary" size="s" onPress={() => handleMarkSafe(member)} style={styles.actionButton} />
                     </View>
                   )}
                 </RCard>
@@ -152,6 +196,21 @@ export function FamilyScreen({ onNavigate }: FamilyScreenProps) {
           })}
         </ScrollView>
       </SafeAreaView>
+
+      {toast && (
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.toast, { opacity: toastOpacity, backgroundColor: colors.ink, borderColor: colors.hairline }]}
+          accessibilityLiveRegion="polite"
+          accessibilityRole="alert"
+        >
+          <Ionicons name="checkmark-circle" size={18} color={colors.bg} />
+          <RText variant="body" color={colors.bg} style={styles.toastText}>
+            {toast}
+          </RText>
+        </Animated.View>
+      )}
+
       <RTabBar active="Family" onSelect={onNavigate} />
     </View>
   );
@@ -238,6 +297,27 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   actionButton: {
+    flex: 1,
+  },
+  toast: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    bottom: 96,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  toastText: {
     flex: 1,
   },
 });
