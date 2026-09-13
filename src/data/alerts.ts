@@ -33,21 +33,26 @@ const TONE_PRIORITY: Record<MapAlert['tone'], number> = {
   advice: 1,
 };
 
-// Alerts listed with the most serious threat first. The bushfire emergency is the main
-// threat; the storm (watch) and flood (advice) sit below it in priority order.
+// Alerts listed with the most serious threat first. The flash flood is the main threat;
+// the storm (watch) and bushfire (advice) sit below it in priority order.
 const UNSORTED_ALERTS: MapAlert[] = [
   {
-    id: 'dandenong-bushfire',
-    hazard: 'fire',
-    icon: 'flame',
+    id: 'yarra-flood',
+    hazard: 'flood',
+    icon: 'water',
     tone: 'emergency',
-    title: 'Bushfire emergency near the Dandenong Ranges',
-    detail: 'A fast-moving bushfire is threatening properties near the Dandenong Ranges. Leave now if you are in the area.',
-    instructions: ['Leave the area now', 'Take your emergency kit', 'Go to your meeting point', 'Call 000 if trapped'],
-    coordinate: { latitude: -37.87, longitude: 145.35 },
-    radius: 800,
-    distanceKm: 32,
-    updatedMinAgo: 5,
+    title: 'Flash flooding emergency along the Yarra River',
+    detail: 'Dangerous flash flooding is hitting the Yarra River area now. Move to higher ground immediately if you are near the river.',
+    instructions: [
+      'Move to higher ground now',
+      "Don't walk or drive through floodwater",
+      'Take your emergency kit',
+      'Call 000 if trapped',
+    ],
+    coordinate: { latitude: -37.8183, longitude: 144.9669 },
+    radius: 1200,
+    distanceKm: 1.2,
+    updatedMinAgo: 2,
   },
   {
     id: 'west-storm',
@@ -63,22 +68,17 @@ const UNSORTED_ALERTS: MapAlert[] = [
     updatedMinAgo: 8,
   },
   {
-    id: 'yarra-flood',
-    hazard: 'flood',
-    icon: 'water',
+    id: 'dandenong-bushfire',
+    hazard: 'fire',
+    icon: 'flame',
     tone: 'advice',
-    title: 'Flash flooding expected along the Yarra River',
-    detail: 'Flash flooding expected along the Yarra River. Avoid low-lying paths and underpasses near the river.',
-    instructions: [
-      'Avoid riverside paths and underpasses',
-      "Don't walk or drive through floodwater",
-      'Keep your phone charged',
-      'Listen for updates',
-    ],
-    coordinate: { latitude: -37.8183, longitude: 144.9669 },
-    radius: 1200,
-    distanceKm: 1.2,
-    updatedMinAgo: 2,
+    title: 'Bushfire advice near the Dandenong Ranges',
+    detail: 'A bushfire is burning near the Dandenong Ranges. Stay informed and be ready to act if the situation changes.',
+    instructions: ['Stay informed', 'Prepare your emergency kit', 'Know your meeting point', 'Listen for updates'],
+    coordinate: { latitude: -37.87, longitude: 145.35 },
+    radius: 800,
+    distanceKm: 32,
+    updatedMinAgo: 5,
   },
 ];
 

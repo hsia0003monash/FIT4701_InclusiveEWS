@@ -1,0 +1,61 @@
+EWS Scenario
+
+This will be given out to users for running through the EWS app.
+
+
+PERSONA TESTER WILL PLAY
+
+(To be completed.)
+
+
+SCENARIO THEY WILL WALK THROUGH
+
+It is a wet, stormy afternoon in Melbourne. You are at home in the city (Melbourne CBD)
+with your elderly parents. Your young grandchild, Kai (8), is at school at St Kilda
+Primary. You have your phone nearby but are not watching it closely - the room is a
+little noisy. Suddenly your phone buzzes hard.
+
+Walk through the app the way you would in real life. Take your time, and say out loud
+what you are thinking as you go. (The facilitator will start the emergency for you.)
+
+1. A flood warning arrives.
+   Your phone vibrates and a full-screen red EMERGENCY alert takes over the screen:
+   "Flash flooding emergency along the Yarra River." Look at it and tell us:
+   - What is happening, and how serious is it?
+   - What is it telling you to do? (e.g. move to higher ground, don't drive through
+     floodwater, take your kit, call 000 if trapped)
+
+2. See where the flooding is.
+   Tap "See on map". The map opens and centres on the flooding along the Yarra River,
+   showing how close it is to your home. Describe what you understand: Is your home in
+   danger? How far away is the flooding?
+
+3. Tell your family you are safe.
+   Tap the big "I'm Safe" button so your family knows you are okay.
+
+4. Check on your family.
+   Go to the Family tab. You will see Mum and Dad are marked safe, and your husband is
+   safe at work - but Kai has "Not replied" from school. Open Kai's card and try to reach
+   out (Call / Nudge, or mark that you know they are safe).
+
+5. Know what to do.
+   Go to the Plans tab and open a plan (for example the flood or fire plan). Read the
+   steps and think about whether they help you look after your parents and Kai.
+
+6. Warn a neighbour who has no app.
+   Imagine your next-door neighbour does not have this app. Try to share the flood alert
+   with them so they know to move to safety too.
+
+7. Make the app easier for you.
+   Go to the Settings tab. Try turning on dark mode, larger text, or higher contrast so
+   the alert is easier to read. Try setting your preferred language if you can find the
+   option.
+
+8. Get interrupted, then come back.
+   Your parents call out to you - leave the app for a moment, then open it again. Check
+   whether it is easy to pick up where you left off and still see the warning.
+
+When you have finished, please fill in the survey:
+https://docs.google.com/forms/d/e/1FAIpQLSdYjA6Q_-kR73voPU-rL25JG4qWhe4VYmmspAwh2iSgKYhasw/viewform
+
+Thank you for helping us test the app.
