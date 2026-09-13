@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Speech from 'expo-speech';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RButton } from '../components/RButton';
@@ -22,6 +23,13 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
   const alert = PRIMARY_ALERT;
   const tone = severity[alert.tone];
   const level = severityLevels[alert.tone];
+
+  const handleReadAloud = () => {
+    // Stop anything already being read, then speak the alert clearly and slowly.
+    Speech.stop();
+    const spoken = `${level.label} alert. ${alert.title}. ${alert.detail}`;
+    Speech.speak(spoken, { rate: 0.9, pitch: 1.0 });
+  };
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>
@@ -83,6 +91,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
                 size="m"
                 icon="volume-high-outline"
                 iconPosition="leading"
+                onPress={handleReadAloud}
                 accessibilityHint="Reads this alert aloud"
               />
             </View>

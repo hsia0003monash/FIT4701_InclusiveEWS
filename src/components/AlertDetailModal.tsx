@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Speech from 'expo-speech';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MapAlert } from '../data/alerts';
@@ -16,12 +17,25 @@ interface AlertDetailModalProps {
 export function AlertDetailModal({ alert, onClose }: AlertDetailModalProps) {
   const { colors, radius } = useTheme();
 
+  const handleReadAloud = () => {
+    if (!alert) return;
+    Speech.stop();
+    const steps = alert.instructions.map((s, i) => `${i + 1}. ${s}.`).join(' ');
+    const spoken = `${severityLevels[alert.tone].label} alert. ${alert.title}. ${alert.detail} What to do: ${steps}`;
+    Speech.speak(spoken, { rate: 0.9, pitch: 1.0 });
+  };
+
+  const handleClose = () => {
+    Speech.stop();
+    onClose();
+  };
+
   return (
-    <Modal visible={!!alert} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={!!alert} animationType="slide" transparent onRequestClose={handleClose}>
       <View style={styles.backdrop}>
         <Pressable
           style={StyleSheet.absoluteFill}
-          onPress={onClose}
+          onPress={handleClose}
           accessibilityRole="button"
           accessibilityLabel="Close alert details"
         />
@@ -44,7 +58,7 @@ export function AlertDetailModal({ alert, onClose }: AlertDetailModalProps) {
                   pill={false}
                 />
                 <Pressable
-                  onPress={onClose}
+                  onPress={handleClose}
                   accessibilityRole="button"
                   accessibilityLabel="Close"
                   style={[styles.closeButton, { backgroundColor: colors.surface, borderColor: colors.hairline }]}
@@ -86,7 +100,7 @@ export function AlertDetailModal({ alert, onClose }: AlertDetailModalProps) {
                 ))}
               </View>
 
-              <RButton label="Read aloud" variant="secondary" size="m" icon="volume-high-outline" iconPosition="leading" />
+              <RButton label="Read aloud" variant="secondary" size="m" icon="volume-high-outline" iconPosition="leading" onPress={handleReadAloud} />
             </ScrollView>
           </SafeAreaView>
         )}
