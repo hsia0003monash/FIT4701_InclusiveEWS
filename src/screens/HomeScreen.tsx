@@ -7,6 +7,8 @@ import { RTabBar, TabKey } from '../components/RTabBar';
 import { RText } from '../components/RText';
 import { SeverityBadge } from '../components/SeverityBadge';
 import { FAMILY } from '../data/family';
+import { PRIMARY_ALERT } from '../data/alerts';
+import { severityLevels } from '../theme/tokens';
 import { useTheme } from '../theme/useTheme';
 
 interface HomeScreenProps {
@@ -16,6 +18,10 @@ interface HomeScreenProps {
 export function HomeScreen({ onNavigate }: HomeScreenProps) {
   const { colors, severity } = useTheme();
   const safeCount = FAMILY.filter((m) => m.status === 'safe').length;
+
+  const alert = PRIMARY_ALERT;
+  const tone = severity[alert.tone];
+  const level = severityLevels[alert.tone];
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>
@@ -45,26 +51,32 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
           </View>
 
           <RCard
-            style={[styles.alertCard, { borderLeftColor: severity.advice.border, borderLeftWidth: 6 }]}
+            style={[styles.alertCard, { borderLeftColor: tone.border, borderLeftWidth: 6 }]}
             accessibilityRole="alert"
-            accessibilityLabel="Advice alert. Flash flooding expected along the Yarra River. Updated 2 minutes ago."
+            accessibilityLabel={`${level.label} alert. ${alert.title}. Updated ${alert.updatedMinAgo} minutes ago.`}
           >
             <View style={styles.alertHeaderRow}>
-              <SeverityBadge tone="advice" label="ADVICE" icon="information-circle" pill={false} />
+              <SeverityBadge tone={alert.tone} label={level.label} icon={level.icon} pill={false} />
               <View style={styles.updatedRow}>
                 <Ionicons name="time-outline" size={14} color={colors.ink3} />
                 <RText variant="caption" color={colors.ink3}>
-                  Updated 2 min ago
+                  Updated {alert.updatedMinAgo} min ago
                 </RText>
               </View>
             </View>
 
             <RText variant="heroHeadline" color={colors.ink} style={styles.alertHeadline} accessibilityRole="header">
-              Flash flooding expected along the Yarra River.
+              {alert.title}
             </RText>
 
             <View style={styles.alertActions}>
-              <RButton label="Read details" variant="primary" size="m" icon="chevron-forward" />
+              <RButton
+                label="Read details"
+                variant="primary"
+                size="m"
+                icon="chevron-forward"
+                onPress={() => onNavigate('Map')}
+              />
               <RButton
                 label="Read aloud"
                 variant="secondary"

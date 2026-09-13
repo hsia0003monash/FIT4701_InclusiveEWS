@@ -26,7 +26,42 @@ export interface MapAlert {
 
 export const HOME_LOCATION: Coordinate = { latitude: -37.8136, longitude: 144.9631 };
 
-export const MAP_ALERTS: MapAlert[] = [
+// Priority order for sorting: highest severity first.
+const TONE_PRIORITY: Record<MapAlert['tone'], number> = {
+  emergency: 3,
+  watch: 2,
+  advice: 1,
+};
+
+// Alerts listed with the most serious threat first. The bushfire emergency is the main
+// threat; the storm (watch) and flood (advice) sit below it in priority order.
+const UNSORTED_ALERTS: MapAlert[] = [
+  {
+    id: 'dandenong-bushfire',
+    hazard: 'fire',
+    icon: 'flame',
+    tone: 'emergency',
+    title: 'Bushfire emergency near the Dandenong Ranges',
+    detail: 'A fast-moving bushfire is threatening properties near the Dandenong Ranges. Leave now if you are in the area.',
+    instructions: ['Leave the area now', 'Take your emergency kit', 'Go to your meeting point', 'Call 000 if trapped'],
+    coordinate: { latitude: -37.87, longitude: 145.35 },
+    radius: 800,
+    distanceKm: 32,
+    updatedMinAgo: 5,
+  },
+  {
+    id: 'west-storm',
+    hazard: 'storm',
+    icon: 'thunderstorm',
+    tone: 'watch',
+    title: 'Severe thunderstorm approaching from the west',
+    detail: 'A severe thunderstorm is approaching from the west, with damaging winds and heavy rain possible.',
+    instructions: ['Stay inside', 'Stay away from windows', 'Keep a torch ready', 'Secure loose outdoor items'],
+    coordinate: { latitude: -37.79, longitude: 144.9 },
+    radius: 2000,
+    distanceKm: 4.6,
+    updatedMinAgo: 8,
+  },
   {
     id: 'yarra-flood',
     hazard: 'flood',
@@ -45,33 +80,15 @@ export const MAP_ALERTS: MapAlert[] = [
     distanceKm: 1.2,
     updatedMinAgo: 2,
   },
-  {
-    id: 'west-storm',
-    hazard: 'storm',
-    icon: 'thunderstorm',
-    tone: 'watch',
-    title: 'Severe thunderstorm approaching from the west',
-    detail: 'A severe thunderstorm is approaching from the west, with damaging winds and heavy rain possible.',
-    instructions: ['Stay inside', 'Stay away from windows', 'Keep a torch ready', 'Secure loose outdoor items'],
-    coordinate: { latitude: -37.79, longitude: 144.9 },
-    radius: 2000,
-    distanceKm: 4.6,
-    updatedMinAgo: 8,
-  },
-  {
-    id: 'dandenong-bushfire',
-    hazard: 'fire',
-    icon: 'flame',
-    tone: 'emergency',
-    title: 'Bushfire emergency near the Dandenong Ranges',
-    detail: 'A fast-moving bushfire is threatening properties near the Dandenong Ranges. Leave now if you are in the area.',
-    instructions: ['Leave the area now', 'Take your emergency kit', 'Go to your meeting point', 'Call 000 if trapped'],
-    coordinate: { latitude: -37.87, longitude: 145.35 },
-    radius: 800,
-    distanceKm: 32,
-    updatedMinAgo: 5,
-  },
 ];
+
+export const MAP_ALERTS: MapAlert[] = [...UNSORTED_ALERTS].sort(
+  (a, b) => TONE_PRIORITY[b.tone] - TONE_PRIORITY[a.tone] || a.distanceKm - b.distanceKm,
+);
+
+// The single most important threat (highest severity, then nearest). Drives the
+// featured alert card on the Home screen.
+export const PRIMARY_ALERT: MapAlert = MAP_ALERTS[0];
 
 function isHomeInDanger(): boolean {
   return MAP_ALERTS.some((alert) => {
