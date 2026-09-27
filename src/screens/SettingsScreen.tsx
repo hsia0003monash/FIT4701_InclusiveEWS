@@ -43,10 +43,9 @@ function ToggleRow({ icon, title, description, value, onValueChange, isLast }: T
 
 export function SettingsScreen({ onNavigate }: SettingsScreenProps) {
   const { colors } = useTheme();
-  const { darkMode, setDarkMode } = useSettings();
+  const { darkMode, setDarkMode, highContrast, setHighContrast } = useSettings();
 
-  // Visual-only for now - no behavior wired up yet, unlike Dark mode.
-  const [highContrast, setHighContrast] = useState(false);
+  // Visual-only for now - no behavior wired up yet, unlike Dark mode and High contrast.
   const [largeText, setLargeText] = useState(false);
   const [colourBlindPalette, setColourBlindPalette] = useState(false);
 
