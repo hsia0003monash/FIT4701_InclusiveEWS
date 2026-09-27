@@ -2,11 +2,22 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AddPlanSheet } from '../components/AddPlanSheet';
 import { PlanDetailModal } from '../components/PlanDetailModal';
 import { RCard } from '../components/RCard';
 import { RTabBar, TabKey } from '../components/RTabBar';
 import { RText } from '../components/RText';
-import { getPlanStats, getProgressFillColor, getProgressFillWidth, Plan, PLANS, PlanStatus } from '../data/plans';
+import {
+  createBlankPlan,
+  createPlanFromPreset,
+  getPlanStats,
+  getProgressFillColor,
+  getProgressFillWidth,
+  Plan,
+  PLANS,
+  PlanPreset,
+  PlanStatus,
+} from '../data/plans';
 import { useTheme } from '../theme/useTheme';
 
 interface PlansScreenProps {
@@ -56,14 +67,58 @@ function PlanTile({ plan, onPress }: { plan: Plan; onPress: () => void }) {
 
 export function PlansScreen({ onNavigate, alertActive }: PlansScreenProps) {
   const { colors } = useTheme();
+  const [plans, setPlans] = useState<Plan[]>(PLANS);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
-  const selectedPlan = PLANS.find((p) => p.id === selectedPlanId) ?? null;
+  const [addOpen, setAddOpen] = useState(false);
+  const selectedPlan = plans.find((p) => p.id === selectedPlanId) ?? null;
 
-  // Close the plan detail modal when the full-screen incoming-threat overlay appears,
+  // Close any open plan modals when the full-screen incoming-threat overlay appears,
   // since a native Modal would otherwise render on top of the alert.
   useEffect(() => {
-    if (alertActive) setSelectedPlanId(null);
+    if (alertActive) {
+      setSelectedPlanId(null);
+      setAddOpen(false);
+    }
   }, [alertActive]);
+
+  const handleSelectPreset = (preset: PlanPreset) => {
+    const plan = createPlanFromPreset(preset);
+    setPlans((prev) => [...prev, plan]);
+    setAddOpen(false);
+    setSelectedPlanId(plan.id); // open the new plan straight away
+  };
+
+  const handleCreateCustom = (name: string) => {
+    const plan = createBlankPlan(name);
+    setPlans((prev) => [...prev, plan]);
+    setAddOpen(false);
+    setSelectedPlanId(plan.id);
+  };
+
+  const handleToggleTask = (planId: string, index: number) => {
+    setPlans((prev) =>
+      prev.map((plan) =>
+        plan.id === planId
+          ? {
+              ...plan,
+              checklist: plan.checklist.map((item, i) =>
+                i === index ? { ...item, done: !item.done } : item,
+              ),
+            }
+          : plan,
+      ),
+    );
+  };
+
+  const handleAddTask = (planId: string, label: string) => {
+    setPlans((prev) =>
+      prev.map((plan) =>
+        plan.id === planId
+          ? { ...plan, checklist: [...plan.checklist, { label, done: false }] }
+          : plan,
+      ),
+    );
+  };
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>
@@ -78,14 +133,46 @@ export function PlansScreen({ onNavigate, alertActive }: PlansScreenProps) {
           </RText>
 
           <View style={styles.tileGrid}>
-            {PLANS.map((plan) => (
+            {plans.map((plan) => (
               <PlanTile key={plan.id} plan={plan} onPress={() => setSelectedPlanId(plan.id)} />
             ))}
+
+            {/* Add-a-plan tile: opens the preset library or custom builder. */}
+            <Pressable
+              onPress={() => setAddOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Add a plan"
+              accessibilityHint="Choose a ready-made plan or create your own"
+              style={styles.tileWrap}
+            >
+              <RCard style={[styles.addTile, { borderColor: colors.hairline }]}>
+                <View style={[styles.addIcon, { backgroundColor: colors.surface2 }]}>
+                  <Ionicons name="add" size={26} color={colors.ink} />
+                </View>
+                <RText variant="bodyEmphasis" color={colors.ink}>
+                  Add a plan
+                </RText>
+                <RText variant="caption" color={colors.ink3}>
+                  Preset or your own
+                </RText>
+              </RCard>
+            </Pressable>
           </View>
         </ScrollView>
       </SafeAreaView>
       <RTabBar active="Plans" onSelect={onNavigate} />
-      <PlanDetailModal plan={selectedPlan} onClose={() => setSelectedPlanId(null)} />
+      <PlanDetailModal
+        plan={selectedPlan}
+        onClose={() => setSelectedPlanId(null)}
+        onToggleTask={handleToggleTask}
+        onAddTask={handleAddTask}
+      />
+      <AddPlanSheet
+        visible={addOpen}
+        onClose={() => setAddOpen(false)}
+        onSelectPreset={handleSelectPreset}
+        onCreateCustom={handleCreateCustom}
+      />
     </View>
   );
 }
@@ -112,6 +199,22 @@ const styles = StyleSheet.create({
   },
   tile: {
     gap: 8,
+  },
+  addTile: {
+    gap: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    minHeight: 118,
+  },
+  addIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
   },
   progressTrack: {
     height: 6,

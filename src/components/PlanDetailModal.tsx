@@ -1,14 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { ChecklistItem, getPlanStats, getProgressFillColor, getProgressFillWidth, Plan, PlanStatus } from '../data/plans';
 import { useTheme } from '../theme/useTheme';
 import { RBottomSheet } from './RBottomSheet';
+import { RButton } from './RButton';
 import { RCard } from './RCard';
 import { RText } from './RText';
 
 interface PlanDetailModalProps {
   plan: Plan | null;
   onClose: () => void;
+  /** Toggle a checklist item's done state (by its index in the plan's checklist). */
+  onToggleTask?: (planId: string, index: number) => void;
+  /** Add a new custom task to the plan. */
+  onAddTask?: (planId: string, label: string) => void;
 }
 
 const STATUS_LABEL: Record<PlanStatus, string> = {
@@ -21,13 +27,22 @@ function ChecklistRow({
   item,
   colors,
   isLast,
+  onToggle,
 }: {
   item: ChecklistItem;
   colors: ReturnType<typeof useTheme>['colors'];
   isLast: boolean;
+  onToggle?: () => void;
 }) {
   return (
-    <View style={[styles.checklistRow, !isLast && { borderBottomWidth: 1, borderBottomColor: colors.hairline }]}>
+    <Pressable
+      onPress={onToggle}
+      disabled={!onToggle}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: item.done }}
+      accessibilityLabel={item.label}
+      style={[styles.checklistRow, !isLast && { borderBottomWidth: 1, borderBottomColor: colors.hairline }]}
+    >
       <View
         style={[
           styles.checkbox,
@@ -53,12 +68,21 @@ function ChecklistRow({
         )}
       </View>
       {item.expandable && <Ionicons name="chevron-forward" size={18} color={colors.ink3} />}
-    </View>
+    </Pressable>
   );
 }
 
-export function PlanDetailModal({ plan, onClose }: PlanDetailModalProps) {
+export function PlanDetailModal({ plan, onClose, onToggleTask, onAddTask }: PlanDetailModalProps) {
   const { colors, severity } = useTheme();
+  const [newTask, setNewTask] = useState('');
+
+  const handleAddTask = () => {
+    if (!plan || !onAddTask) return;
+    const label = newTask.trim();
+    if (!label) return;
+    onAddTask(plan.id, label);
+    setNewTask('');
+  };
 
   return (
     <RBottomSheet visible={!!plan} onClose={onClose} height="tall" accessibilityLabel="Close plan details">
@@ -86,9 +110,11 @@ export function PlanDetailModal({ plan, onClose }: PlanDetailModalProps) {
                       </Pressable>
                     </View>
 
-                    <RText variant="secondary" color={colors.ink3}>
-                      Created by {plan.createdBy} · Reviewed {plan.reviewed}
-                    </RText>
+                    <View style={styles.section}>
+                      <RText variant="secondary" color={colors.ink3}>
+                        Created by {plan.createdBy} · Reviewed {plan.reviewed}
+                      </RText>
+                    </View>
 
                     <View style={[styles.progressTrack, { backgroundColor: colors.surface2 }]}>
                       <View
@@ -104,78 +130,112 @@ export function PlanDetailModal({ plan, onClose }: PlanDetailModalProps) {
                       </RText>
                     </View>
 
-                    <View style={styles.section}>
-                      <RText variant="sectionHeading" color={colors.ink}>
-                        Household
-                      </RText>
-                      <View style={styles.chipRow}>
-                        {plan.participants.map((p) => (
-                          <View key={p.name} style={[styles.chip, { backgroundColor: colors.surface2 }]}>
-                            <View style={[styles.chipAvatar, { backgroundColor: colors.surface }]}>
-                              <RText variant="micro" color={colors.ink2}>
-                                {p.name.charAt(0)}
-                              </RText>
-                            </View>
-                            <RText variant="secondary" color={colors.ink}>
-                              {p.name}
-                            </RText>
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-
-                    <View style={styles.section}>
-                      <RText variant="sectionHeading" color={colors.ink}>
-                        Preparedness
-                      </RText>
-                      <RCard padded={false}>
-                        {plan.participants.map((p, index) => {
-                          const pPercent = Math.round((p.stepsDone / total) * 100);
-                          return (
-                            <View
-                              key={p.name}
-                              style={[
-                                styles.preparednessRow,
-                                index < plan.participants.length - 1 && {
-                                  borderBottomWidth: 1,
-                                  borderBottomColor: colors.hairline,
-                                },
-                              ]}
-                            >
-                              <View style={[styles.chipAvatar, { backgroundColor: colors.surface2 }]}>
+                    {plan.participants.length > 0 && (
+                      <View style={styles.section}>
+                        <RText variant="sectionHeading" color={colors.ink}>
+                          Household
+                        </RText>
+                        <View style={styles.chipRow}>
+                          {plan.participants.map((p) => (
+                            <View key={p.name} style={[styles.chip, { backgroundColor: colors.surface2 }]}>
+                              <View style={[styles.chipAvatar, { backgroundColor: colors.surface }]}>
                                 <RText variant="micro" color={colors.ink2}>
                                   {p.name.charAt(0)}
                                 </RText>
                               </View>
-                              <RText variant="body" color={colors.ink} style={styles.preparednessName}>
+                              <RText variant="secondary" color={colors.ink}>
                                 {p.name}
                               </RText>
-                              <View style={[styles.miniTrack, { backgroundColor: colors.surface2 }]}>
-                                <View style={[styles.miniFill, { backgroundColor: colors.ink3, width: `${pPercent}%` }]} />
-                              </View>
-                              <RText variant="caption" color={colors.ink3} style={styles.preparednessFraction}>
-                                {p.stepsDone}/{total}
-                              </RText>
                             </View>
-                          );
-                        })}
-                      </RCard>
-                    </View>
+                          ))}
+                        </View>
+                      </View>
+                    )}
+
+                    {plan.participants.length > 0 && (
+                      <View style={styles.section}>
+                        <RText variant="sectionHeading" color={colors.ink}>
+                          Preparedness
+                        </RText>
+                        <RCard padded={false}>
+                          {plan.participants.map((p, index) => {
+                            const pPercent = total === 0 ? 0 : Math.round((p.stepsDone / total) * 100);
+                            return (
+                              <View
+                                key={p.name}
+                                style={[
+                                  styles.preparednessRow,
+                                  index < plan.participants.length - 1 && {
+                                    borderBottomWidth: 1,
+                                    borderBottomColor: colors.hairline,
+                                  },
+                                ]}
+                              >
+                                <View style={[styles.chipAvatar, { backgroundColor: colors.surface2 }]}>
+                                  <RText variant="micro" color={colors.ink2}>
+                                    {p.name.charAt(0)}
+                                  </RText>
+                                </View>
+                                <RText variant="body" color={colors.ink} style={styles.preparednessName}>
+                                  {p.name}
+                                </RText>
+                                <View style={[styles.miniTrack, { backgroundColor: colors.surface2 }]}>
+                                  <View style={[styles.miniFill, { backgroundColor: colors.ink3, width: `${pPercent}%` }]} />
+                                </View>
+                                <RText variant="caption" color={colors.ink3} style={styles.preparednessFraction}>
+                                  {p.stepsDone}/{total}
+                                </RText>
+                              </View>
+                            );
+                          })}
+                        </RCard>
+                      </View>
+                    )}
 
                     <View style={styles.section}>
                       <RText variant="sectionHeading" color={colors.ink}>
                         Checklist
                       </RText>
-                      <RCard padded={false}>
-                        {plan.checklist.map((item, index) => (
-                          <ChecklistRow
-                            key={item.label}
-                            item={item}
-                            colors={colors}
-                            isLast={index === plan.checklist.length - 1}
+                      {total === 0 ? (
+                        <RText variant="secondary" color={colors.ink3}>
+                          No steps yet. Add your own below.
+                        </RText>
+                      ) : (
+                        <RCard padded={false}>
+                          {plan.checklist.map((item, index) => (
+                            <ChecklistRow
+                              key={`${item.label}-${index}`}
+                              item={item}
+                              colors={colors}
+                              isLast={index === plan.checklist.length - 1}
+                              onToggle={onToggleTask ? () => onToggleTask(plan.id, index) : undefined}
+                            />
+                          ))}
+                        </RCard>
+                      )}
+
+                      {onAddTask && (
+                        <View style={styles.addTaskRow}>
+                          <TextInput
+                            value={newTask}
+                            onChangeText={setNewTask}
+                            placeholder="Add your own step"
+                            placeholderTextColor={colors.ink3}
+                            style={[styles.addTaskInput, { borderColor: colors.hairline, color: colors.ink, backgroundColor: colors.surface }]}
+                            accessibilityLabel="New checklist step"
+                            returnKeyType="done"
+                            onSubmitEditing={handleAddTask}
                           />
-                        ))}
-                      </RCard>
+                          <Pressable
+                            onPress={handleAddTask}
+                            accessibilityRole="button"
+                            accessibilityLabel="Add step"
+                            style={[styles.addTaskButton, { backgroundColor: colors.ink }]}
+                          >
+                            <Ionicons name="add" size={22} color={colors.bg} />
+                          </Pressable>
+                        </View>
+                      )}
                     </View>
                   </>
                 );
@@ -292,5 +352,25 @@ const styles = StyleSheet.create({
   },
   strikethrough: {
     textDecorationLine: 'line-through',
+  },
+  addTaskRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  addTaskInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+  },
+  addTaskButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
