@@ -21,9 +21,11 @@ interface MapScreenProps {
   focusAlertId?: string | null;
   /** Called once the focused alert has been handled, so the parent can clear it. */
   onFocusHandled?: () => void;
+  /** True while the full-screen incoming-threat overlay is showing. */
+  alertActive?: boolean;
 }
 
-export function MapScreen({ onNavigate, focusAlertId, onFocusHandled }: MapScreenProps) {
+export function MapScreen({ onNavigate, focusAlertId, onFocusHandled, alertActive }: MapScreenProps) {
   const { colors, severity } = useTheme();
   const { mapTextOnly: textOnly, setMapTextOnly: setTextOnly } = useSettings();
   const [selectedAlert, setSelectedAlert] = useState<MapAlert | null>(null);
@@ -33,6 +35,16 @@ export function MapScreen({ onNavigate, focusAlertId, onFocusHandled }: MapScree
   const [expandedRowIds, setExpandedRowIds] = useState<string[]>([]);
   const mapRef = useRef<MapView | null>(null);
   const markerRefs = useRef<Record<string, MapMarker | null>>({});
+
+  // Close our native modals whenever the full-screen incoming-threat overlay is showing.
+  // A native Modal always renders above the in-tree overlay, so leaving one open would
+  // cover the alert.
+  useEffect(() => {
+    if (alertActive) {
+      setSelectedAlert(null);
+      setExpanded(false);
+    }
+  }, [alertActive]);
 
   const toggleRowExpanded = (id: string) => {
     setExpandedRowIds((prev) => (prev.includes(id) ? prev.filter((rowId) => rowId !== id) : [...prev, id]));

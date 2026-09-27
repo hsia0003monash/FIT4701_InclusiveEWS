@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PlanDetailModal } from '../components/PlanDetailModal';
@@ -11,6 +11,8 @@ import { useTheme } from '../theme/useTheme';
 
 interface PlansScreenProps {
   onNavigate: (tab: TabKey) => void;
+  /** True while the full-screen incoming-threat overlay is showing. */
+  alertActive?: boolean;
 }
 
 const STATUS_LABEL: Record<PlanStatus, string> = {
@@ -52,10 +54,16 @@ function PlanTile({ plan, onPress }: { plan: Plan; onPress: () => void }) {
   );
 }
 
-export function PlansScreen({ onNavigate }: PlansScreenProps) {
+export function PlansScreen({ onNavigate, alertActive }: PlansScreenProps) {
   const { colors } = useTheme();
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const selectedPlan = PLANS.find((p) => p.id === selectedPlanId) ?? null;
+
+  // Close the plan detail modal when the full-screen incoming-threat overlay appears,
+  // since a native Modal would otherwise render on top of the alert.
+  useEffect(() => {
+    if (alertActive) setSelectedPlanId(null);
+  }, [alertActive]);
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>

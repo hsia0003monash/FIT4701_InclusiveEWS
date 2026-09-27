@@ -71,9 +71,10 @@ function AppContent({ onLayout }: { onLayout: () => void }) {
           onNavigate={handleNavigate}
           focusAlertId={focusAlertId}
           onFocusHandled={() => setFocusAlertId(null)}
+          alertActive={!!incomingThreat}
         />
       )}
-      {activeTab === 'Plans' && <PlansScreen onNavigate={handleNavigate} />}
+      {activeTab === 'Plans' && <PlansScreen onNavigate={handleNavigate} alertActive={!!incomingThreat} />}
       {activeTab === 'Settings' && <SettingsScreen onNavigate={handleNavigate} />}
       {activeTab === 'Home' && <HomeScreen onNavigate={handleNavigate} />}
 
