@@ -45,11 +45,10 @@ export function SettingsScreen({ onNavigate }: SettingsScreenProps) {
   const { colors } = useTheme();
   const { darkMode, setDarkMode } = useSettings();
 
-  // Visual-only for now — no behavior wired up yet, unlike Dark mode.
+  // Visual-only for now - no behavior wired up yet, unlike Dark mode.
   const [highContrast, setHighContrast] = useState(false);
   const [largeText, setLargeText] = useState(false);
   const [colourBlindPalette, setColourBlindPalette] = useState(false);
-  const [textOnly, setTextOnly] = useState(false);
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>
@@ -109,17 +108,6 @@ export function SettingsScreen({ onNavigate }: SettingsScreenProps) {
               description="Uses blue/amber instead of red/green; icons change shape"
               value={colourBlindPalette}
               onValueChange={setColourBlindPalette}
-            />
-            <ToggleRow
-              icon={
-                <RText variant="caption" color={colors.ink}>
-                  ABC
-                </RText>
-              }
-              title="Text-only mode"
-              description="Hides decorative graphics. Keeps all critical information."
-              value={textOnly}
-              onValueChange={setTextOnly}
               isLast
             />
           </RCard>

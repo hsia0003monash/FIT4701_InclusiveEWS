@@ -28,8 +28,20 @@ export function MapScreen({ onNavigate, focusAlertId, onFocusHandled }: MapScree
   const [safeSent, setSafeSent] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [mapReady, setMapReady] = useState(false);
+  const [textOnly, setTextOnly] = useState(false);
+  const [expandedRowIds, setExpandedRowIds] = useState<string[]>([]);
   const mapRef = useRef<MapView | null>(null);
   const markerRefs = useRef<Record<string, MapMarker | null>>({});
+
+  const toggleRowExpanded = (id: string) => {
+    setExpandedRowIds((prev) => (prev.includes(id) ? prev.filter((rowId) => rowId !== id) : [...prev, id]));
+  };
+
+  // "See on map" only makes sense against the actual map, so jump out of text-only mode
+  // whenever a deep link asks to focus a specific alert there.
+  useEffect(() => {
+    if (focusAlertId) setTextOnly(false);
+  }, [focusAlertId]);
 
   // Focus a specific alert the same way a manual marker tap does: center the map on it,
   // pop the native marker callout, and open its detail sheet.
@@ -71,9 +83,26 @@ export function MapScreen({ onNavigate, focusAlertId, onFocusHandled }: MapScree
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>
       <SafeAreaView edges={['top']} style={styles.flex}>
         <ScrollView contentContainerStyle={styles.content}>
-          <RText variant="eyebrowLabel" color={colors.ink3}>
-            MAP
-          </RText>
+          <View style={styles.headerRow}>
+            <RText variant="eyebrowLabel" color={colors.ink3}>
+              MAP
+            </RText>
+            <Pressable
+              onPress={() => setTextOnly((prev) => !prev)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: textOnly }}
+              accessibilityLabel={textOnly ? 'Switch to map view' : 'Switch to text-only view'}
+              style={[
+                styles.textOnlyToggle,
+                { backgroundColor: textOnly ? colors.ink : colors.surface, borderColor: colors.hairline },
+              ]}
+            >
+              <Ionicons name="reader-outline" size={14} color={textOnly ? colors.bg : colors.ink2} />
+              <RText variant="caption" color={textOnly ? colors.bg : colors.ink2}>
+                Text only
+              </RText>
+            </Pressable>
+          </View>
 
           <View style={styles.titleBlock}>
             <RText variant="largeTitle" color={colors.ink} accessibilityRole="header">
@@ -84,6 +113,62 @@ export function MapScreen({ onNavigate, focusAlertId, onFocusHandled }: MapScree
             </RText>
           </View>
 
+          {textOnly ? (
+            <View>
+              <RText variant="sectionHeading" color={colors.ink} accessibilityRole="header" style={styles.minimalHeading}>
+                Active alerts
+              </RText>
+              <RCard padded={false}>
+                {MAP_ALERTS.map((alert, index) => {
+                  const tone = severity[alert.tone];
+                  const isOpen = expandedRowIds.includes(alert.id);
+                  return (
+                    <View
+                      key={alert.id}
+                      style={index < MAP_ALERTS.length - 1 ? [styles.minimalDivider, { borderBottomColor: colors.hairline }] : undefined}
+                    >
+                      <Pressable
+                        onPress={() => toggleRowExpanded(alert.id)}
+                        accessibilityRole="button"
+                        accessibilityState={{ expanded: isOpen }}
+                        accessibilityLabel={`${severityLevels[alert.tone].label}. ${alert.title}. ${
+                          isOpen ? 'Collapse' : 'Expand'
+                        } what to do`}
+                        style={styles.minimalRow}
+                      >
+                        <View style={styles.minimalRowText}>
+                          <RText variant="eyebrowLabel" color={tone.fg}>
+                            {severityLevels[alert.tone].label}
+                          </RText>
+                          <RText variant="bodyEmphasis" color={colors.ink}>
+                            {alert.title}
+                          </RText>
+                          <RText variant="caption" color={colors.ink3}>
+                            {alert.distanceKm} km away
+                          </RText>
+                        </View>
+                        <Ionicons name={isOpen ? 'chevron-up' : 'chevron-down'} size={20} color={colors.ink3} />
+                      </Pressable>
+
+                      {isOpen && (
+                        <View style={[styles.minimalExpanded, { backgroundColor: colors.surface2 }]}>
+                          <RText variant="caption" color={colors.ink3}>
+                            What to do
+                          </RText>
+                          {alert.instructions.map((step, i) => (
+                            <RText key={step} variant="body" color={colors.ink}>
+                              {i + 1}. {step}
+                            </RText>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+              </RCard>
+            </View>
+          ) : (
+            <>
           <View style={[styles.mapContainer, { borderColor: colors.hairline }]}>
             <MapView
               ref={mapRef}
@@ -180,6 +265,8 @@ export function MapScreen({ onNavigate, focusAlertId, onFocusHandled }: MapScree
               </Pressable>
             );
           })}
+            </>
+          )}
 
           <RButton
             label={safeSent ? 'Sent!' : "I'm Safe"}
@@ -214,8 +301,44 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 16,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  textOnlyToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
   titleBlock: {
     gap: 6,
+  },
+  minimalHeading: {
+    marginBottom: 12,
+  },
+  minimalDivider: {
+    borderBottomWidth: 1,
+  },
+  minimalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+  },
+  minimalRowText: {
+    flex: 1,
+    gap: 4,
+  },
+  minimalExpanded: {
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    gap: 8,
   },
   mapContainer: {
     height: 280,
