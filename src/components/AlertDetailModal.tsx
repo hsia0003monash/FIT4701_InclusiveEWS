@@ -1,11 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
-import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Fragment, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { MapAlert } from '../data/alerts';
 import { severityLevels } from '../theme/tokens';
 import { useTheme } from '../theme/useTheme';
+import { RBottomSheet } from './RBottomSheet';
 import { RButton } from './RButton';
 import { RText } from './RText';
 import { SeverityBadge } from './SeverityBadge';
@@ -17,7 +17,7 @@ interface AlertDetailModalProps {
 }
 
 export function AlertDetailModal({ alert, onClose }: AlertDetailModalProps) {
-  const { colors, radius } = useTheme();
+  const { colors } = useTheme();
   const [shareOpen, setShareOpen] = useState(false);
 
   const handleReadAloud = () => {
@@ -34,122 +34,100 @@ export function AlertDetailModal({ alert, onClose }: AlertDetailModalProps) {
   };
 
   return (
-    <Modal visible={!!alert} animationType="slide" transparent onRequestClose={handleClose}>
-      <View style={styles.backdrop}>
-        <Pressable
-          style={StyleSheet.absoluteFill}
-          onPress={handleClose}
-          accessibilityRole="button"
-          accessibilityLabel="Close alert details"
-        />
+    <Fragment>
+      {/* Hidden while the share sheet is open - two simultaneously-visible native Modals is unreliable in RN
+          (touches can route to the wrong layer), so only one of the two is ever visible at once. */}
+      <RBottomSheet visible={!!alert && !shareOpen} onClose={handleClose} accessibilityLabel="Close alert details">
         {alert && (
-          <SafeAreaView
-            edges={['bottom']}
-            style={[
-              styles.sheet,
-              { backgroundColor: colors.bg, borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet },
-            ]}
-          >
-            <View style={[styles.grabber, { backgroundColor: colors.hairline }]} />
+          <ScrollView contentContainerStyle={styles.content}>
+            <View style={styles.headerRow}>
+              <SeverityBadge
+                tone={alert.tone}
+                label={severityLevels[alert.tone].label}
+                icon={severityLevels[alert.tone].icon}
+                pill={false}
+              />
+              <Pressable
+                onPress={handleClose}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                style={[styles.closeButton, { backgroundColor: colors.surface, borderColor: colors.hairline }]}
+              >
+                <Ionicons name="close" size={18} color={colors.ink} />
+              </Pressable>
+            </View>
 
-            <ScrollView contentContainerStyle={styles.content}>
-              <View style={styles.headerRow}>
-                <SeverityBadge
-                  tone={alert.tone}
-                  label={severityLevels[alert.tone].label}
-                  icon={severityLevels[alert.tone].icon}
-                  pill={false}
-                />
-                <Pressable
-                  onPress={handleClose}
-                  accessibilityRole="button"
-                  accessibilityLabel="Close"
-                  style={[styles.closeButton, { backgroundColor: colors.surface, borderColor: colors.hairline }]}
-                >
-                  <Ionicons name="close" size={18} color={colors.ink} />
-                </Pressable>
-              </View>
+            <RText variant="title" color={colors.ink} accessibilityRole="header">
+              {alert.title}
+            </RText>
 
-              <RText variant="title" color={colors.ink} accessibilityRole="header">
-                {alert.title}
+            <RText variant="body" color={colors.ink2}>
+              {alert.detail}
+            </RText>
+
+            <View style={styles.metaRow}>
+              <Ionicons name="location-outline" size={14} color={colors.ink3} />
+              <RText variant="caption" color={colors.ink3}>
+                {alert.distanceKm} km away · Updated {alert.updatedMinAgo} min ago
               </RText>
+            </View>
 
-              <RText variant="body" color={colors.ink2}>
-                {alert.detail}
+            <View style={styles.section}>
+              <RText variant="sectionHeading" color={colors.ink}>
+                What to do
               </RText>
-
-              <View style={styles.metaRow}>
-                <Ionicons name="location-outline" size={14} color={colors.ink3} />
-                <RText variant="caption" color={colors.ink3}>
-                  {alert.distanceKm} km away · Updated {alert.updatedMinAgo} min ago
-                </RText>
-              </View>
-
-              <View style={styles.section}>
-                <RText variant="sectionHeading" color={colors.ink}>
-                  What to do
-                </RText>
-                {alert.instructions.map((instruction, index) => (
-                  <View key={instruction} style={styles.instructionRow}>
-                    <View style={[styles.instructionNumber, { backgroundColor: colors.surface2 }]}>
-                      <RText variant="caption" color={colors.ink}>
-                        {index + 1}
-                      </RText>
-                    </View>
-                    <RText variant="body" color={colors.ink} style={styles.instructionText}>
-                      {instruction}
+              {alert.instructions.map((instruction, index) => (
+                <View key={instruction} style={styles.instructionRow}>
+                  <View style={[styles.instructionNumber, { backgroundColor: colors.surface2 }]}>
+                    <RText variant="caption" color={colors.ink}>
+                      {index + 1}
                     </RText>
                   </View>
-                ))}
-              </View>
+                  <RText variant="body" color={colors.ink} style={styles.instructionText}>
+                    {instruction}
+                  </RText>
+                </View>
+              ))}
+            </View>
 
-              <View style={styles.actionsRow}>
-                <RButton
-                  label="Read aloud"
-                  variant="secondary"
-                  size="m"
-                  icon="volume-high-outline"
-                  iconPosition="leading"
-                  onPress={handleReadAloud}
-                  style={styles.actionButton}
-                />
-                <RButton
-                  label="Share"
-                  variant="secondary"
-                  size="m"
-                  icon="share-outline"
-                  iconPosition="leading"
-                  onPress={() => setShareOpen(true)}
-                  style={styles.actionButton}
-                />
-              </View>
-            </ScrollView>
-          </SafeAreaView>
+            <View style={styles.actionsRow}>
+              <RButton
+                label="Read aloud"
+                variant="secondary"
+                size="m"
+                icon="volume-high-outline"
+                iconPosition="leading"
+                onPress={handleReadAloud}
+                style={styles.actionButton}
+              />
+              <RButton
+                label="Share"
+                variant="secondary"
+                size="m"
+                icon="share-outline"
+                iconPosition="leading"
+                onPress={() => setShareOpen(true)}
+                style={styles.actionButton}
+              />
+            </View>
+          </ScrollView>
         )}
-      </View>
+      </RBottomSheet>
 
-      <ShareSheet alert={shareOpen ? alert : null} onClose={() => setShareOpen(false)} />
-    </Modal>
+      {/* Closing the share sheet closes the alert too, rather than revealing it again behind the
+          share sheet - the user asked to share from the alert, not to come back to it. */}
+      <ShareSheet
+        alert={shareOpen ? alert : null}
+        onClose={() => {
+          setShareOpen(false);
+          handleClose();
+        }}
+      />
+    </Fragment>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  sheet: {
-    maxHeight: '80%',
-    overflow: 'hidden',
-  },
-  grabber: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginTop: 10,
-  },
   content: {
     padding: 20,
     gap: 16,

@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Fragment } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { FAMILY } from '../data/family';
 import { MapAlert } from '../data/alerts';
 import { severityLevels } from '../theme/tokens';
 import { useTheme } from '../theme/useTheme';
+import { RBottomSheet } from './RBottomSheet';
 import { RText } from './RText';
 
 interface ShareSheetProps {
@@ -29,33 +30,18 @@ const SHARE_CHANNELS: ShareChannel[] = [
 ];
 
 export function ShareSheet({ alert, onClose }: ShareSheetProps) {
-  const { colors, severity, radius } = useTheme();
+  const { colors, severity } = useTheme();
 
   return (
-    <Modal visible={!!alert} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <Pressable
-          style={StyleSheet.absoluteFill}
-          onPress={onClose}
-          accessibilityRole="button"
-          accessibilityLabel="Close share sheet"
-        />
-        {alert &&
-          (() => {
-            const tone = severity[alert.tone];
-            const level = severityLevels[alert.tone];
+    <RBottomSheet visible={!!alert} onClose={onClose} accessibilityLabel="Close share sheet">
+      {alert &&
+        (() => {
+          const tone = severity[alert.tone];
+          const level = severityLevels[alert.tone];
 
-            return (
-              <SafeAreaView
-                edges={['bottom']}
-                style={[
-                  styles.sheet,
-                  { backgroundColor: colors.bg, borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet },
-                ]}
-              >
-                <View style={[styles.grabber, { backgroundColor: colors.hairline }]} />
-
-                <View style={styles.headerRow}>
+          return (
+            <Fragment>
+              <View style={styles.headerRow}>
                   <RText variant="bodyEmphasis" color={colors.ink}>
                     Share warning
                   </RText>
@@ -151,31 +137,14 @@ export function ShareSheet({ alert, onClose }: ShareSheetProps) {
                     ))}
                   </View>
                 </ScrollView>
-              </SafeAreaView>
+              </Fragment>
             );
           })()}
-      </View>
-    </Modal>
+    </RBottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  sheet: {
-    maxHeight: '82%',
-    overflow: 'hidden',
-  },
-  grabber: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginTop: 10,
-  },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',

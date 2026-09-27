@@ -62,7 +62,7 @@ export function RBottomSheet({ visible, onClose, children, height = 'auto', acce
               },
             ]}
           >
-            <SafeAreaView edges={['bottom']} style={styles.safeArea}>
+            <SafeAreaView edges={['bottom']} style={height === 'tall' ? styles.safeAreaFill : undefined}>
               <View {...panResponder.panHandlers} style={styles.dragZone}>
                 <View style={[styles.grabber, { backgroundColor: colors.hairline }]} />
               </View>
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
     height: '92%',
     overflow: 'hidden',
   },
-  safeArea: {
+  safeAreaFill: {
     flex: 1,
   },
   dragZone: {

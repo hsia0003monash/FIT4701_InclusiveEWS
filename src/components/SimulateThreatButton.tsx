@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { MAP_ALERTS, MapAlert } from '../data/alerts';
 import { severityLevels } from '../theme/tokens';
 import { useTheme } from '../theme/useTheme';
+import { RBottomSheet } from './RBottomSheet';
 import { RText } from './RText';
 import { SeverityBadge } from './SeverityBadge';
 
@@ -40,45 +40,41 @@ export function SimulateThreatButton({ onTrigger }: SimulateThreatButtonProps) {
         <Ionicons name="flash" size={22} color={colors.bg} />
       </Pressable>
 
-      <Modal visible={pickerOpen} animationType="slide" transparent onRequestClose={() => setPickerOpen(false)}>
-        <View style={styles.backdrop}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setPickerOpen(false)} accessibilityLabel="Close" />
-          <SafeAreaView edges={['bottom']} style={[styles.sheet, { backgroundColor: colors.bg }]}>
-            <View style={[styles.grabber, { backgroundColor: colors.hairline }]} />
-            <RText variant="title" color={colors.ink} style={styles.sheetTitle} accessibilityRole="header">
-              Simulate a threat
-            </RText>
-            <RText variant="secondary" color={colors.ink3} style={styles.sheetSub}>
-              Facilitator control · pick a threat to push to the user
-            </RText>
+      <RBottomSheet visible={pickerOpen} onClose={() => setPickerOpen(false)}>
+        <View style={styles.sheetContent}>
+          <RText variant="title" color={colors.ink} style={styles.sheetTitle} accessibilityRole="header">
+            Simulate a threat
+          </RText>
+          <RText variant="secondary" color={colors.ink3} style={styles.sheetSub}>
+            Facilitator control · pick a threat to push to the user
+          </RText>
 
-            {MAP_ALERTS.map((alert) => {
-              const tone = severity[alert.tone];
-              const level = severityLevels[alert.tone];
-              return (
-                <Pressable
-                  key={alert.id}
-                  onPress={() => handlePick(alert)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Simulate ${alert.title}`}
-                  style={[styles.row, { borderColor: colors.hairline }]}
-                >
-                  <View style={[styles.rowIcon, { backgroundColor: tone.bg }]}>
-                    <Ionicons name={alert.icon} size={24} color={tone.fg} />
-                  </View>
-                  <View style={styles.rowText}>
-                    <SeverityBadge tone={alert.tone} label={level.label} icon={level.icon} pill={false} size="s" />
-                    <RText variant="bodyEmphasis" color={colors.ink}>
-                      {alert.title}
-                    </RText>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color={colors.ink3} />
-                </Pressable>
-              );
-            })}
-          </SafeAreaView>
+          {MAP_ALERTS.map((alert) => {
+            const tone = severity[alert.tone];
+            const level = severityLevels[alert.tone];
+            return (
+              <Pressable
+                key={alert.id}
+                onPress={() => handlePick(alert)}
+                accessibilityRole="button"
+                accessibilityLabel={`Simulate ${alert.title}`}
+                style={[styles.row, { borderColor: colors.hairline }]}
+              >
+                <View style={[styles.rowIcon, { backgroundColor: tone.bg }]}>
+                  <Ionicons name={alert.icon} size={24} color={tone.fg} />
+                </View>
+                <View style={styles.rowText}>
+                  <SeverityBadge tone={alert.tone} label={level.label} icon={level.icon} pill={false} size="s" />
+                  <RText variant="bodyEmphasis" color={colors.ink}>
+                    {alert.title}
+                  </RText>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.ink3} />
+              </Pressable>
+            );
+          })}
         </View>
-      </Modal>
+      </RBottomSheet>
     </>
   );
 }
@@ -101,24 +97,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     zIndex: 50,
   },
-  backdrop: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  sheet: {
-    maxHeight: '80%',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+  sheetContent: {
     padding: 20,
     gap: 12,
-  },
-  grabber: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 8,
   },
   sheetTitle: {
     marginTop: 4,
