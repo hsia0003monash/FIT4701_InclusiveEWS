@@ -191,32 +191,6 @@ export function MapScreen({ onNavigate, focusAlertId, onFocusHandled }: MapScree
             );
           })}
 
-          <RCard
-            style={[
-              styles.homeCard,
-              { borderLeftColor: HOME_IN_DANGER ? severity.emergency.border : severity.safe.border, borderLeftWidth: 6 },
-            ]}
-          >
-            <View style={styles.alertRow}>
-              <View
-                style={[
-                  styles.alertIcon,
-                  { backgroundColor: HOME_IN_DANGER ? severity.emergency.bg : severity.safe.bg },
-                ]}
-              >
-                <Ionicons name="home" size={26} color={HOME_IN_DANGER ? severity.emergency.fg : severity.safe.fg} />
-              </View>
-              <View style={styles.alertInfo}>
-                <RText variant="bodyEmphasis" color={colors.ink}>
-                  {HOME_IN_DANGER ? 'Your home - Danger' : 'Your home - Safe'}
-                </RText>
-                <RText variant="secondary" color={colors.ink2}>
-                  {HOME_IN_DANGER ? 'Leave the area if possible.' : 'No action needed.'}
-                </RText>
-              </View>
-            </View>
-          </RCard>
-
           <RButton
             label={safeSent ? 'Sent!' : "I'm Safe"}
             variant="primary"
@@ -308,8 +282,5 @@ const styles = StyleSheet.create({
   alertInfo: {
     flex: 1,
     gap: 4,
-  },
-  homeCard: {
-    gap: 8,
   },
 });

@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
+import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MapAlert } from '../data/alerts';
@@ -8,6 +9,7 @@ import { useTheme } from '../theme/useTheme';
 import { RButton } from './RButton';
 import { RText } from './RText';
 import { SeverityBadge } from './SeverityBadge';
+import { ShareSheet } from './ShareSheet';
 
 interface AlertDetailModalProps {
   alert: MapAlert | null;
@@ -16,6 +18,7 @@ interface AlertDetailModalProps {
 
 export function AlertDetailModal({ alert, onClose }: AlertDetailModalProps) {
   const { colors, radius } = useTheme();
+  const [shareOpen, setShareOpen] = useState(false);
 
   const handleReadAloud = () => {
     if (!alert) return;
@@ -100,11 +103,32 @@ export function AlertDetailModal({ alert, onClose }: AlertDetailModalProps) {
                 ))}
               </View>
 
-              <RButton label="Read aloud" variant="secondary" size="m" icon="volume-high-outline" iconPosition="leading" onPress={handleReadAloud} />
+              <View style={styles.actionsRow}>
+                <RButton
+                  label="Read aloud"
+                  variant="secondary"
+                  size="m"
+                  icon="volume-high-outline"
+                  iconPosition="leading"
+                  onPress={handleReadAloud}
+                  style={styles.actionButton}
+                />
+                <RButton
+                  label="Share"
+                  variant="secondary"
+                  size="m"
+                  icon="share-outline"
+                  iconPosition="leading"
+                  onPress={() => setShareOpen(true)}
+                  style={styles.actionButton}
+                />
+              </View>
             </ScrollView>
           </SafeAreaView>
         )}
       </View>
+
+      <ShareSheet alert={shareOpen ? alert : null} onClose={() => setShareOpen(false)} />
     </Modal>
   );
 }
@@ -166,6 +190,13 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   instructionText: {
+    flex: 1,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  actionButton: {
     flex: 1,
   },
 });
