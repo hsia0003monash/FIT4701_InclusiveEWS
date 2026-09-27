@@ -77,7 +77,7 @@ const UNSORTED_ALERTS: MapAlert[] = [
     detail: 'A bushfire is burning near the Dandenong Ranges. Stay informed and be ready to act if the situation changes.',
     instructions: ['Stay informed', 'Prepare your emergency kit', 'Know your meeting point', 'Listen for updates'],
     coordinate: { latitude: -37.87, longitude: 145.35 },
-    radius: 800,
+    radius: 2500,
     distanceKm: 32,
     updatedMinAgo: 5,
   },
