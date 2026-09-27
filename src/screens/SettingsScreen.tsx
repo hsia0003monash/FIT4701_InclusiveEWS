@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { ReactNode, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RCard } from '../components/RCard';
 import { RTabBar, TabKey } from '../components/RTabBar';
@@ -55,19 +55,9 @@ export function SettingsScreen({ onNavigate }: SettingsScreenProps) {
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>
       <SafeAreaView edges={['top']} style={styles.flex}>
         <ScrollView contentContainerStyle={styles.content}>
-          <View style={styles.headerRow}>
-            <Pressable
-              onPress={() => onNavigate('Home')}
-              accessibilityRole="button"
-              accessibilityLabel="Back to Home"
-              style={[styles.backButton, { backgroundColor: colors.surface, borderColor: colors.hairline }]}
-            >
-              <Ionicons name="chevron-back" size={18} color={colors.ink} />
-            </Pressable>
-            <RText variant="eyebrowLabel" color={colors.ink3}>
-              SETTINGS
-            </RText>
-          </View>
+          <RText variant="eyebrowLabel" color={colors.ink3}>
+            SETTINGS
+          </RText>
 
           <View style={styles.titleBlock}>
             <RText variant="largeTitle" color={colors.ink} accessibilityRole="header">
@@ -150,19 +140,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     gap: 20,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   titleBlock: {
     gap: 6,
