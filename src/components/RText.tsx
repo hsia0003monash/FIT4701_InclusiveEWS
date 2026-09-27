@@ -1,6 +1,7 @@
 import { Text, TextProps } from 'react-native';
 import { fontFamilyForWeight } from '../theme/fonts';
 import { typography } from '../theme/tokens';
+import { useTheme } from '../theme/useTheme';
 
 type ScaleKey = keyof typeof typography.scale;
 
@@ -10,6 +11,7 @@ interface RTextProps extends TextProps {
 }
 
 export function RText({ variant, color, style, ...rest }: RTextProps) {
+  const { textScale } = useTheme();
   const scale = typography.scale[variant];
 
   return (
@@ -17,9 +19,9 @@ export function RText({ variant, color, style, ...rest }: RTextProps) {
       style={[
         {
           fontFamily: fontFamilyForWeight(scale.fontWeight),
-          fontSize: scale.fontSize,
+          fontSize: scale.fontSize * textScale,
           letterSpacing: scale.letterSpacing,
-          lineHeight: scale.lineHeight,
+          lineHeight: scale.lineHeight * textScale,
           textTransform: 'textTransform' in scale ? scale.textTransform : undefined,
           color,
         },

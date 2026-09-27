@@ -5,6 +5,8 @@ interface SettingsContextValue {
   setDarkMode: (value: boolean) => void;
   highContrast: boolean;
   setHighContrast: (value: boolean) => void;
+  largeText: boolean;
+  setLargeText: (value: boolean) => void;
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -12,10 +14,11 @@ const SettingsContext = createContext<SettingsContextValue | null>(null);
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [darkMode, setDarkMode] = useState(false);
   const [highContrast, setHighContrast] = useState(false);
+  const [largeText, setLargeText] = useState(false);
 
   const value = useMemo(
-    () => ({ darkMode, setDarkMode, highContrast, setHighContrast }),
-    [darkMode, highContrast],
+    () => ({ darkMode, setDarkMode, highContrast, setHighContrast, largeText, setLargeText }),
+    [darkMode, highContrast, largeText],
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

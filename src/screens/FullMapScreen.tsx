@@ -461,21 +461,21 @@ export function FullMapScreen({ onClose }: FullMapScreenProps) {
                 <RText variant="caption" color={colors.ink3}>
                   Marker size
                 </RText>
-                <ROptionSelector options={MARKER_SIZE_OPTIONS} value={markerSize} onChange={setMarkerSize} theme={{ colors, severity, spacing, radius, sizing, scheme, typography: undefined as never }} />
+                <ROptionSelector options={MARKER_SIZE_OPTIONS} value={markerSize} onChange={setMarkerSize} theme={theme} />
               </View>
 
               <View style={{ gap: spacing.scale[2] }}>
                 <RText variant="caption" color={colors.ink3}>
                   Button size
                 </RText>
-                <ROptionSelector options={BUTTON_SIZE_OPTIONS} value={buttonSizePref} onChange={setButtonSizePref} theme={{ colors, severity, spacing, radius, sizing, scheme, typography: undefined as never }} />
+                <ROptionSelector options={BUTTON_SIZE_OPTIONS} value={buttonSizePref} onChange={setButtonSizePref} theme={theme} />
               </View>
 
               <View style={{ gap: spacing.scale[2] }}>
                 <RText variant="caption" color={colors.ink3}>
                   Button position
                 </RText>
-                <ROptionSelector options={BUTTON_POSITION_OPTIONS} value={buttonPosition} onChange={setButtonPosition} theme={{ colors, severity, spacing, radius, sizing, scheme, typography: undefined as never }} />
+                <ROptionSelector options={BUTTON_POSITION_OPTIONS} value={buttonPosition} onChange={setButtonPosition} theme={theme} />
               </View>
 
               <RToggleRow
@@ -483,7 +483,7 @@ export function FullMapScreen({ onClose }: FullMapScreenProps) {
                 description="Shows every alert the same way, instead of a different icon per hazard type"
                 value={simpleMap}
                 onChange={setSimpleMap}
-                theme={{ colors, severity, spacing, radius, sizing, scheme, typography: undefined as never }}
+                theme={theme}
               />
             </View>
           </ScrollView>
