@@ -11,6 +11,7 @@ import { RText } from '../components/RText';
 import { SeverityBadge } from '../components/SeverityBadge';
 import { HOME_IN_DANGER, HOME_LOCATION, MAP_ALERTS, MapAlert, withAlpha } from '../data/alerts';
 import { FullMapScreen } from './FullMapScreen';
+import { useSettings } from '../context/SettingsContext';
 import { severityLevels } from '../theme/tokens';
 import { useTheme } from '../theme/useTheme';
 
@@ -24,11 +25,11 @@ interface MapScreenProps {
 
 export function MapScreen({ onNavigate, focusAlertId, onFocusHandled }: MapScreenProps) {
   const { colors, severity } = useTheme();
+  const { mapTextOnly: textOnly, setMapTextOnly: setTextOnly } = useSettings();
   const [selectedAlert, setSelectedAlert] = useState<MapAlert | null>(null);
   const [safeSent, setSafeSent] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [mapReady, setMapReady] = useState(false);
-  const [textOnly, setTextOnly] = useState(false);
   const [expandedRowIds, setExpandedRowIds] = useState<string[]>([]);
   const mapRef = useRef<MapView | null>(null);
   const markerRefs = useRef<Record<string, MapMarker | null>>({});
@@ -88,7 +89,7 @@ export function MapScreen({ onNavigate, focusAlertId, onFocusHandled }: MapScree
               MAP
             </RText>
             <Pressable
-              onPress={() => setTextOnly((prev) => !prev)}
+              onPress={() => setTextOnly(!textOnly)}
               accessibilityRole="button"
               accessibilityState={{ selected: textOnly }}
               accessibilityLabel={textOnly ? 'Switch to map view' : 'Switch to text-only view'}
