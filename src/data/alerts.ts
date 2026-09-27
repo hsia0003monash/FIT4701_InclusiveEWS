@@ -5,7 +5,7 @@ export interface Coordinate {
   longitude: number;
 }
 
-export type HazardType = 'flood' | 'storm' | 'fire';
+export type HazardType = 'flood' | 'storm' | 'fire' | 'tree' | 'hydrant';
 
 export interface MapAlert {
   id: string;
@@ -34,7 +34,8 @@ const TONE_PRIORITY: Record<MapAlert['tone'], number> = {
 };
 
 // Alerts listed with the most serious threat first. The flash flood is the main threat;
-// the storm (watch) and bushfire (advice) sit below it in priority order.
+// the storm (watch) and the advice-tier alerts (bushfire, fallen tree, damaged hydrant)
+// sit below it in priority order.
 const UNSORTED_ALERTS: MapAlert[] = [
   {
     id: 'yarra-flood',
@@ -60,11 +61,11 @@ const UNSORTED_ALERTS: MapAlert[] = [
     icon: 'thunderstorm',
     tone: 'watch',
     title: 'Severe thunderstorm approaching from the west',
-    detail: 'A severe thunderstorm is approaching from the west, with damaging winds and heavy rain possible.',
+    detail: 'A severe thunderstorm is approaching from the west, with damaging winds and heavy rain possible across central Melbourne.',
     instructions: ['Stay inside', 'Stay away from windows', 'Keep a torch ready', 'Secure loose outdoor items'],
-    coordinate: { latitude: -37.79, longitude: 144.9 },
-    radius: 2000,
-    distanceKm: 4.6,
+    coordinate: { latitude: -37.805, longitude: 144.945 },
+    radius: 6000,
+    distanceKm: 1.9,
     updatedMinAgo: 8,
   },
   {
@@ -76,9 +77,45 @@ const UNSORTED_ALERTS: MapAlert[] = [
     detail: 'A bushfire is burning near the Dandenong Ranges. Stay informed and be ready to act if the situation changes.',
     instructions: ['Stay informed', 'Prepare your emergency kit', 'Know your meeting point', 'Listen for updates'],
     coordinate: { latitude: -37.87, longitude: 145.35 },
-    radius: 800,
+    radius: 2500,
     distanceKm: 32,
     updatedMinAgo: 5,
+  },
+  {
+    id: 'st-kilda-tree',
+    hazard: 'tree',
+    icon: 'leaf',
+    tone: 'advice',
+    title: 'Fallen tree blocking the road in St Kilda',
+    detail: 'A tree has fallen across the road in St Kilda following recent winds. The road is partially blocked and traffic delays are possible.',
+    instructions: [
+      'Avoid the affected street if possible',
+      'Drive carefully around the area',
+      'Report it to the council if not already cleared',
+      'No further action needed',
+    ],
+    coordinate: { latitude: -37.8678, longitude: 144.9799 },
+    radius: 0,
+    distanceKm: 6.2,
+    updatedMinAgo: 15,
+  },
+  {
+    id: 'brunswick-hydrant',
+    hazard: 'hydrant',
+    icon: 'construct',
+    tone: 'advice',
+    title: 'Damaged fire hydrant reported in Brunswick',
+    detail: 'A fire hydrant has been damaged in Brunswick and is leaking water onto the street. Repair crews have been notified.',
+    instructions: [
+      'Avoid parking near the hydrant',
+      'Watch for wet or slippery road surfaces',
+      'Report any further damage to the council',
+      'No further action needed',
+    ],
+    coordinate: { latitude: -37.7663, longitude: 144.9598 },
+    radius: 0,
+    distanceKm: 5.3,
+    updatedMinAgo: 25,
   },
 ];
 

@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { ChecklistItem, getPlanStats, getProgressFillColor, getProgressFillWidth, Plan, PlanStatus } from '../data/plans';
 import { useTheme } from '../theme/useTheme';
+import { RBottomSheet } from './RBottomSheet';
 import { RCard } from './RCard';
 import { RText } from './RText';
 
@@ -58,28 +58,12 @@ function ChecklistRow({
 }
 
 export function PlanDetailModal({ plan, onClose }: PlanDetailModalProps) {
-  const { colors, severity, radius } = useTheme();
+  const { colors, severity } = useTheme();
 
   return (
-    <Modal visible={!!plan} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <Pressable
-          style={StyleSheet.absoluteFill}
-          onPress={onClose}
-          accessibilityRole="button"
-          accessibilityLabel="Close plan details"
-        />
-        {plan && (
-          <SafeAreaView
-            edges={['bottom']}
-            style={[
-              styles.sheet,
-              { backgroundColor: colors.bg, borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet },
-            ]}
-          >
-            <View style={[styles.grabber, { backgroundColor: colors.hairline }]} />
-
-            <ScrollView contentContainerStyle={styles.content}>
+    <RBottomSheet visible={!!plan} onClose={onClose} height="tall" accessibilityLabel="Close plan details">
+      {plan && (
+        <ScrollView contentContainerStyle={styles.content}>
               {(() => {
                 const { total, done, percent } = getPlanStats(plan);
                 const statusColor =
@@ -196,31 +180,13 @@ export function PlanDetailModal({ plan, onClose }: PlanDetailModalProps) {
                   </>
                 );
               })()}
-            </ScrollView>
-          </SafeAreaView>
-        )}
-      </View>
-    </Modal>
+        </ScrollView>
+      )}
+    </RBottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  sheet: {
-    height: '92%',
-    overflow: 'hidden',
-  },
-  grabber: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginTop: 10,
-  },
   content: {
     padding: 20,
     gap: 20,
