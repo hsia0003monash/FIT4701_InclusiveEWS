@@ -1,5 +1,14 @@
 import { ReactNode, useRef } from 'react';
-import { Animated, Modal, PanResponder, Pressable, StyleSheet, View } from 'react-native';
+import {
+  Animated,
+  KeyboardAvoidingView,
+  Modal,
+  PanResponder,
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/useTheme';
 
@@ -47,35 +56,43 @@ export function RBottomSheet({ visible, onClose, children, height = 'auto', acce
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel={accessibilityLabel} />
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={styles.backdrop}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel={accessibilityLabel} />
 
-        {visible && (
-          <Animated.View
-            style={[
-              height === 'tall' ? styles.sheetTall : styles.sheetAuto,
-              {
-                backgroundColor: colors.bg,
-                borderTopLeftRadius: radius.sheet,
-                borderTopRightRadius: radius.sheet,
-                transform: [{ translateY }],
-              },
-            ]}
-          >
-            <SafeAreaView edges={['bottom']} style={height === 'tall' ? styles.safeAreaFill : undefined}>
-              <View {...panResponder.panHandlers} style={styles.dragZone}>
-                <View style={[styles.grabber, { backgroundColor: colors.hairline }]} />
-              </View>
-              {children}
-            </SafeAreaView>
-          </Animated.View>
-        )}
-      </View>
+          {visible && (
+            <Animated.View
+              style={[
+                height === 'tall' ? styles.sheetTall : styles.sheetAuto,
+                {
+                  backgroundColor: colors.bg,
+                  borderTopLeftRadius: radius.sheet,
+                  borderTopRightRadius: radius.sheet,
+                  transform: [{ translateY }],
+                },
+              ]}
+            >
+              <SafeAreaView edges={['bottom']} style={height === 'tall' ? styles.safeAreaFill : undefined}>
+                <View {...panResponder.panHandlers} style={styles.dragZone}>
+                  <View style={[styles.grabber, { backgroundColor: colors.hairline }]} />
+                </View>
+                {children}
+              </SafeAreaView>
+            </Animated.View>
+          )}
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   backdrop: {
     flex: 1,
     justifyContent: 'flex-end',
