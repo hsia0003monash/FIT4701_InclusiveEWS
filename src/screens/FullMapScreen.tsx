@@ -243,11 +243,20 @@ export function FullMapScreen({ onClose }: FullMapScreenProps) {
         ]}
       >
         <Pressable
-          style={[styles.headerIconButton, { width: sizing.touchTarget.minimum, height: sizing.touchTarget.minimum }]}
+          style={[
+            styles.backButton,
+            {
+              width: sizing.touchTarget.minimum,
+              height: sizing.touchTarget.minimum,
+              backgroundColor: colors.ink,
+              borderRadius: radius.pill,
+            },
+          ]}
           onPress={onClose}
-          accessibilityLabel="Close full map"
+          accessibilityRole="button"
+          accessibilityLabel="Back to map"
         >
-          <Ionicons name="chevron-back" size={20} color={colors.ink} />
+          <Ionicons name="chevron-back" size={22} color={colors.bg} />
         </Pressable>
 
         <View style={styles.headerText}>
@@ -506,6 +515,10 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
   headerIconButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backButton: {
     alignItems: 'center',
     justifyContent: 'center',
   },
