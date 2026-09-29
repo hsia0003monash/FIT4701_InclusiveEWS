@@ -1,11 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { ReactNode, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AccessibilityProfileSheet } from '../components/AccessibilityProfileSheet';
 import { RCard } from '../components/RCard';
 import { RTabBar, TabKey } from '../components/RTabBar';
 import { RText } from '../components/RText';
 import { RToggle } from '../components/RToggle';
+import { ACCESSIBILITY_PROFILES } from '../data/accessibility';
 import { useSettings } from '../context/SettingsContext';
 import { useTheme } from '../theme/useTheme';
 
@@ -43,10 +45,26 @@ function ToggleRow({ icon, title, description, value, onValueChange, isLast }: T
 
 export function SettingsScreen({ onNavigate }: SettingsScreenProps) {
   const { colors } = useTheme();
-  const { darkMode, setDarkMode, highContrast, setHighContrast, largeText, setLargeText } = useSettings();
+  const {
+    darkMode,
+    setDarkMode,
+    highContrast,
+    setHighContrast,
+    largeText,
+    setLargeText,
+    colourBlindPalette,
+    setColourBlindPalette,
+    audioFirst,
+    setAudioFirst,
+    strongHaptics,
+    setStrongHaptics,
+    activeProfileId,
+    applyAccessibilityProfile,
+    clearAccessibilityProfile,
+  } = useSettings();
 
-  // Visual-only for now - no behavior wired up yet, unlike the others above it.
-  const [colourBlindPalette, setColourBlindPalette] = useState(false);
+  const [profileSheetOpen, setProfileSheetOpen] = useState(false);
+  const activeProfile = ACCESSIBILITY_PROFILES.find((p) => p.id === activeProfileId) ?? null;
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>
@@ -64,6 +82,33 @@ export function SettingsScreen({ onNavigate }: SettingsScreenProps) {
               Adjust how alerts look, sound, and feel. Changes apply instantly.
             </RText>
           </View>
+
+          {/* Accessibility profile: one tap applies a whole bundle of settings. */}
+          <RText variant="eyebrowLabel" color={colors.ink3}>
+            ACCESSIBILITY PROFILE
+          </RText>
+
+          <Pressable
+            onPress={() => setProfileSheetOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Choose an accessibility profile"
+            accessibilityHint="Applies a set of accessibility settings that match your needs"
+          >
+            <RCard style={styles.profileRow}>
+              <View style={[styles.iconBox, { backgroundColor: colors.surface2 }]}>
+                <Ionicons name={(activeProfile?.icon ?? 'accessibility-outline') as keyof typeof Ionicons.glyphMap} size={20} color={colors.ink} />
+              </View>
+              <View style={styles.rowText}>
+                <RText variant="bodyEmphasis" color={colors.ink}>
+                  {activeProfile ? activeProfile.name : 'Set up your profile'}
+                </RText>
+                <RText variant="secondary" color={colors.ink3}>
+                  {activeProfile ? activeProfile.description : 'Pick the option closest to your needs'}
+                </RText>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.ink3} />
+            </RCard>
+          </Pressable>
 
           <RText variant="eyebrowLabel" color={colors.ink3}>
             VISUAL
@@ -98,20 +143,56 @@ export function SettingsScreen({ onNavigate }: SettingsScreenProps) {
             <ToggleRow
               icon={
                 <View style={styles.swatchPair}>
-                  <View style={[styles.swatch, { backgroundColor: '#D97706' }]} />
-                  <View style={[styles.swatch, { backgroundColor: '#2B3A4E' }]} />
+                  <View style={[styles.swatch, { backgroundColor: '#1D4E89' }]} />
+                  <View style={[styles.swatch, { backgroundColor: '#8A5A00' }]} />
                 </View>
               }
               title="Colour-blind palette"
-              description="Uses blue/amber instead of red/green; icons change shape"
+              description="Uses blue/amber instead of red/green; icons are shape-coded"
               value={colourBlindPalette}
               onValueChange={setColourBlindPalette}
+              isLast
+            />
+          </RCard>
+
+          <RText variant="eyebrowLabel" color={colors.ink3}>
+            SOUND & FEEDBACK
+          </RText>
+
+          <RCard padded={false}>
+            <ToggleRow
+              icon={<Ionicons name="volume-high-outline" size={20} color={colors.ink} />}
+              title="Audio first"
+              description="Read alerts aloud automatically and make Read aloud prominent"
+              value={audioFirst}
+              onValueChange={setAudioFirst}
+            />
+            <ToggleRow
+              icon={<Ionicons name="phone-portrait-outline" size={20} color={colors.ink} />}
+              title="Strong vibration"
+              description="Longer, stronger buzz when an alert arrives"
+              value={strongHaptics}
+              onValueChange={setStrongHaptics}
               isLast
             />
           </RCard>
         </ScrollView>
       </SafeAreaView>
       <RTabBar active="Settings" onSelect={onNavigate} />
+
+      <AccessibilityProfileSheet
+        visible={profileSheetOpen}
+        onClose={() => setProfileSheetOpen(false)}
+        activeProfileId={activeProfileId}
+        onSelect={(profile) => {
+          applyAccessibilityProfile(profile.id, profile.settings);
+          setProfileSheetOpen(false);
+        }}
+        onClear={() => {
+          clearAccessibilityProfile();
+          setProfileSheetOpen(false);
+        }}
+      />
     </View>
   );
 }
@@ -129,6 +210,11 @@ const styles = StyleSheet.create({
   },
   titleBlock: {
     gap: 6,
+  },
+  profileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   row: {
     flexDirection: 'row',

@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Speech from 'expo-speech';
 import { useEffect, useRef } from 'react';
 import {
   Animated,
@@ -9,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSettings } from '../context/SettingsContext';
 import { MapAlert } from '../data/alerts';
 import { severityLevels } from '../theme/tokens';
 import { useTheme } from '../theme/useTheme';
@@ -40,16 +42,35 @@ interface IncomingAlertOverlayProps {
  */
 export function IncomingAlertOverlay({ alert, onDismiss, onSeeOnMap }: IncomingAlertOverlayProps) {
   const { colors, severity, radius } = useTheme();
+  const { audioFirst, strongHaptics } = useSettings();
   const opacity = useRef(new Animated.Value(0)).current;
 
-  // Vibrate when a threat arrives. Emergencies get a stronger, repeating pattern.
+  // Vibrate when a threat arrives. Emergencies get a stronger, repeating pattern, and the
+  // "strong vibration" accessibility setting makes every alert buzz longer and harder
+  // (useful for deaf / hard-of-hearing users who can't rely on sound).
   useEffect(() => {
     if (!alert) return;
-    const pattern =
-      alert.tone === 'emergency' ? [0, 500, 200, 500, 200, 500] : [0, 400, 200, 400];
+    const strongPattern = [0, 800, 300, 800, 300, 800, 300, 800];
+    const emergencyPattern = [0, 500, 200, 500, 200, 500];
+    const normalPattern = [0, 400, 200, 400];
+    const pattern = strongHaptics ? strongPattern : alert.tone === 'emergency' ? emergencyPattern : normalPattern;
     Vibration.vibrate(pattern);
     return () => Vibration.cancel();
-  }, [alert]);
+  }, [alert, strongHaptics]);
+
+  // Audio-first accessibility: read the alert aloud automatically when it appears.
+  useEffect(() => {
+    if (!alert || !audioFirst) return;
+    Speech.stop();
+    const steps = alert.instructions.map((s, i) => `${i + 1}. ${s}.`).join(' ');
+    const spoken = `${severityLevels[alert.tone].label} alert. ${alert.title}. ${alert.detail} What to do: ${steps}`;
+    // Small delay so the vibration/animation start first, then the voice.
+    const timer = setTimeout(() => Speech.speak(spoken, { rate: 0.9, pitch: 1.0 }), 400);
+    return () => {
+      clearTimeout(timer);
+      Speech.stop();
+    };
+  }, [alert, audioFirst]);
 
   // Fade the overlay in when a threat arrives (replaces the old Modal fade animation).
   useEffect(() => {

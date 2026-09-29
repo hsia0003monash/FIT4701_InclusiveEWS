@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
 import { Fragment, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useSettings } from '../context/SettingsContext';
 import { MapAlert } from '../data/alerts';
 import { severityLevels } from '../theme/tokens';
 import { useTheme } from '../theme/useTheme';
@@ -18,6 +19,7 @@ interface AlertDetailModalProps {
 
 export function AlertDetailModal({ alert, onClose }: AlertDetailModalProps) {
   const { colors } = useTheme();
+  const { audioFirst } = useSettings();
   const [shareOpen, setShareOpen] = useState(false);
 
   const handleReadAloud = () => {
@@ -93,7 +95,7 @@ export function AlertDetailModal({ alert, onClose }: AlertDetailModalProps) {
             <View style={styles.actionsRow}>
               <RButton
                 label="Read aloud"
-                variant="secondary"
+                variant={audioFirst ? 'primary' : 'secondary'}
                 size="m"
                 icon="volume-high-outline"
                 iconPosition="leading"

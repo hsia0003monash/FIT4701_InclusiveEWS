@@ -7,6 +7,7 @@ import { RCard } from '../components/RCard';
 import { RTabBar, TabKey } from '../components/RTabBar';
 import { RText } from '../components/RText';
 import { SeverityBadge } from '../components/SeverityBadge';
+import { useSettings } from '../context/SettingsContext';
 import { FAMILY } from '../data/family';
 import { PRIMARY_ALERT } from '../data/alerts';
 import { severityLevels } from '../theme/tokens';
@@ -18,6 +19,7 @@ interface HomeScreenProps {
 
 export function HomeScreen({ onNavigate }: HomeScreenProps) {
   const { colors, severity } = useTheme();
+  const { audioFirst } = useSettings();
   const safeCount = FAMILY.filter((m) => m.status === 'safe').length;
 
   const alert = PRIMARY_ALERT;
@@ -87,8 +89,8 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
               />
               <RButton
                 label="Read aloud"
-                variant="secondary"
-                size="m"
+                variant={audioFirst ? 'primary' : 'secondary'}
+                size={audioFirst ? 'l' : 'm'}
                 icon="volume-high-outline"
                 iconPosition="leading"
                 onPress={handleReadAloud}
